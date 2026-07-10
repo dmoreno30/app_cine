@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     const { buffer, nes, cliente } = await buildICINE(json);
 
     const docxBlob = await put(`icine/${base}.docx`, buffer, {
-      aaccess: "public",
+      access: "public",
       addRandomSuffix: false,
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     });
