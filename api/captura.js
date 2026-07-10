@@ -29,17 +29,17 @@ export default async function handler(req, res) {
     const { buffer, nes, cliente } = await buildICINE(json);
 
     const docxBlob = await put(`icine/${base}.docx`, buffer, {
-      access: "private",
+      aaccess: "public",
       addRandomSuffix: false,
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     });
     await put(`icine/${base}.json`, JSON.stringify(json, null, 2), {
-      access: "private",
+      access: "public",
       addRandomSuffix: false,
       contentType: "application/json"
     });
 
-    await marcarEnviado(_token, { docxPathname: docxBlob.pathname, cliente });
+    await marcarEnviado(_token, { docxUrl: docxBlob.url, cliente });
 
     console.log(`Recibido y generado: ${cliente} — NEs: ${nes.join(", ")}`);
     res.json({ ok: true });
