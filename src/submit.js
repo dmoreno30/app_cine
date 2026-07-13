@@ -12,7 +12,7 @@ export async function submitCaptura(json) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) return { ok: false, reason: "rejected", mensaje: data.mensaje || "No se pudo enviar." };
-    return { ok: true };
+    return { ok: true, docxUrl: data.docxUrl };
   } catch (e) {
     return { ok: false, reason: "network_error", error: e.message };
   }

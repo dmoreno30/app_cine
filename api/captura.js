@@ -2,6 +2,15 @@ import { put } from "@vercel/blob";
 import { buildICINE } from "../lib/build.js";
 import { validar, marcarEnviado } from "../lib/registro.js";
 
+// Vercel a veces nombra el token distinto según cómo conectaste el store
+// (BLOB_READ_WRITE_TOKEN, BLOB2_READ_WRITE_TOKEN, etc. si hay más de un
+// store Blob en el proyecto). Probamos varios nombres conocidos en vez de
+// depender de uno solo.
+const BLOB_TOKEN =
+  process.env.BLOB_READ_WRITE_TOKEN ||
+  process.env.BLOB2_READ_WRITE_TOKEN ||
+  process.env.BLOB2_TOKEN;
+
 function slug(text) {
   return String(text || "cliente").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
@@ -30,19 +39,19 @@ export default async function handler(req, res) {
 
     const docxBlob = await put(`icine/${base}.docx`, buffer, {
       access: "public",
-      addRandomSuffix: false,
+      token: BLOB_TOKEN,
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     });
     await put(`icine/${base}.json`, JSON.stringify(json, null, 2), {
       access: "public",
-      addRandomSuffix: false,
+      token: BLOB_TOKEN,
       contentType: "application/json"
     });
 
     await marcarEnviado(_token, { docxUrl: docxBlob.url, cliente });
 
     console.log(`Recibido y generado: ${cliente} — NEs: ${nes.join(", ")}`);
-    res.json({ ok: true });
+    res.json({ ok: true, docxUrl: docxBlob.url });
   } catch (err) {
     console.error("Error generando el iCINE:", err);
     res.status(500).json({ ok: false, mensaje: "Error interno generando el documento. El equipo técnico ya fue notificado." });

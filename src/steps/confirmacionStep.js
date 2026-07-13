@@ -6,6 +6,7 @@ import { submitCaptura } from "../submit.js";
 
 let lastSendStatus = null; // {ok:boolean, message:string} | null
 let sending = false;
+let lastDocxUrl = null;
 
 function resumenCanales(state) {
   const activos = CANALES.filter((c) => state.captacion.canales[c.key]).map((c) => c.label);
@@ -50,6 +51,15 @@ export function renderConfirmacionStep(state, devMode) {
     html += `<p class="send-status ${lastSendStatus.ok ? "ok" : "error"}">${escapeHtml(lastSendStatus.message)}</p>`;
   }
 
+  if (lastDocxUrl) {
+    html += `
+      <p class="send-status ok" style="margin-top:8px">
+        <a href="${lastDocxUrl}" target="_blank" rel="noopener" style="color:inherit;font-weight:600">
+          <i class="ti ti-file-download" style="margin-right:6px"></i>Descargar el iCINE generado
+        </a>
+      </p>`;
+  }
+
   if (devMode) {
     const json = JSON.stringify(buildCanonicalJSON(state), null, 2);
     html += `
@@ -74,6 +84,7 @@ export function attachConfirmacionListeners(container, state, onChange, inviteTo
     const json = buildCanonicalJSON(state);
     const result = await submitCaptura({ ...json, _token: inviteToken });
     sending = false;
+    lastDocxUrl = result.ok ? result.docxUrl : null;
     lastSendStatus = result.ok
       ? { ok: true, message: "Enviado correctamente. El equipo de asesores-e ya puede continuar." }
       : result.reason === "rejected"
