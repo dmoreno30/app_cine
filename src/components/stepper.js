@@ -1,5 +1,5 @@
 export const PASOS_PRINCIPALES = [
-  { key: "ne", label: "Necesidad específica", icon: "ti-target" },
+  { key: "ne", label: "Sobre la empresa", icon: "ti-building-store" },
   { key: "captacion", label: "Captación de clientes", icon: "ti-antenna" },
   { key: "proceso", label: "Proceso comercial", icon: "ti-route" },
   { key: "reporteria", label: "Reportería", icon: "ti-chart-bar" },

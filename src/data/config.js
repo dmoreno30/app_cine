@@ -61,3 +61,15 @@ export const ENTIDADES = {
 export const ORDEN_ENTIDADES = ["prospectos", "negociaciones", "contactos", "companias", "cotizaciones", "facturas", "postventa"];
 
 export const TIPOS_CAMPO = ["Texto", "Lista", "Fecha", "Numérico", "Sí/No"];
+
+// Monedas con las que puede operar el cliente (multi-selección en "Sobre la empresa").
+// Por ahora se capturan para uso interno; todavía no se muestran en el iCINE.
+export const MONEDAS = [
+  { key: "MXN", label: "Peso mexicano (MXN)" },
+  { key: "PEN", label: "Sol peruano (PEN)" },
+  { key: "COP", label: "Peso colombiano (COP)" },
+  { key: "USD", label: "Dólar (USD)" },
+  { key: "EUR", label: "Euro (EUR)" },
+  { key: "CLP", label: "Peso chileno (CLP)" },
+  { key: "ARS", label: "Peso argentino (ARS)" }
+];

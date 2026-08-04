@@ -1,4 +1,4 @@
-import { CANALES, ENTIDADES } from "./data/config.js";
+import { CANALES, ENTIDADES, MONEDAS } from "./data/config.js";
 import { REPORTES_PROSPECTOS, REPORTES_NEGOCIACIONES } from "./data/reportes.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
@@ -46,6 +46,12 @@ export function defaultState() {
   return {
     cliente: "",
     ne: { descripcion: "" },
+    empresa: {
+      tipoProductos: "",
+      monedas: Object.fromEntries(MONEDAS.map((m) => [m.key, false])),
+      otrasMonedas: "",
+      impuestos: []
+    },
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
@@ -83,6 +89,12 @@ export function loadState() {
       ...base,
       ...parsed,
       ne: { ...base.ne, ...(parsed.ne || {}) },
+      empresa: {
+        ...base.empresa,
+        ...(parsed.empresa || {}),
+        monedas: { ...base.empresa.monedas, ...((parsed.empresa || {}).monedas || {}) },
+        impuestos: Array.isArray((parsed.empresa || {}).impuestos) ? parsed.empresa.impuestos : base.empresa.impuestos
+      },
       captacion: {
         ...base.captacion,
         ...(parsed.captacion || {}),
@@ -132,6 +144,16 @@ export function buildCanonicalJSON(state) {
     cliente: state.cliente.trim(),
     necesidadEspecifica: {
       descripcion: state.ne.descripcion.trim()
+    },
+    // Datos de "Sobre la empresa". Se capturan y guardan, pero el generador
+    // (lib/build.js) todavía no los muestra en el iCINE — se hará más adelante.
+    empresa: {
+      tipoProductos: state.empresa.tipoProductos.trim(),
+      monedas: Object.keys(state.empresa.monedas).filter((k) => state.empresa.monedas[k]),
+      otrasMonedas: state.empresa.otrasMonedas.trim(),
+      impuestos: state.empresa.impuestos
+        .filter((t) => (t.nombre || "").trim())
+        .map((t) => ({ nombre: t.nombre.trim(), porcentaje: String(t.porcentaje == null ? "" : t.porcentaje).trim() }))
     },
     captacionDeClientes: {
       canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),
