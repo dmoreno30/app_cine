@@ -21,6 +21,7 @@ const META = {
 };
 
 export function renderModuloStep(state, key) {
+  if (!state.modulos) state.modulos = { chatbot: "", api: "", app: "" };
   const meta = META[key];
   return `
     <p class="step-title">${meta.titulo}</p>
@@ -35,6 +36,7 @@ export function renderModuloStep(state, key) {
 }
 
 export function attachModuloListeners(container, state, onChange, key) {
+  if (!state.modulos) state.modulos = { chatbot: "", api: "", app: "" };
   const el = container.querySelector(`[data-modulo="${key}"]`);
   if (el) el.addEventListener("input", (e) => { state.modulos[key] = e.target.value; onChange({ rerender: false }); });
 }

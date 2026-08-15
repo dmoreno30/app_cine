@@ -10,9 +10,14 @@ const DESARROLLOS = [
   { key: "app", icon: "ti-app-window", label: "Creación de aplicación", desc: "Desarrollo de una app a medida", paquete: [] }
 ];
 
-function reportesBloqueado(state) { return !!state.desarrollos.proceso; }
+function ensureDesarrollos(state) {
+  if (!state.desarrollos) state.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false };
+  return state.desarrollos;
+}
+function reportesBloqueado(state) { return !!ensureDesarrollos(state).proceso; }
 
 export function renderSeleccionStep(state) {
+  ensureDesarrollos(state);
   const cards = DESARROLLOS.map((m) => {
     const locked = m.key === "reportes" && reportesBloqueado(state);
     const on = state.desarrollos[m.key] && !locked;
@@ -46,6 +51,7 @@ export function renderSeleccionStep(state) {
 }
 
 export function attachSeleccionListeners(container, state, onChange) {
+  ensureDesarrollos(state);
   container.querySelectorAll("[data-toggle-des]").forEach((el) => {
     el.addEventListener("click", () => {
       const key = el.getAttribute("data-toggle-des");

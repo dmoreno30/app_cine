@@ -52,6 +52,11 @@ export function defaultState() {
       otrasMonedas: "",
       impuestos: []
     },
+    // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
+    // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
+    desarrollos: { proceso: false, reportes: false, chatbot: false, api: false, app: false },
+    // Datos libres de los módulos nuevos (sus preguntas detalladas se agregan luego).
+    modulos: { chatbot: "", api: "", app: "" },
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
@@ -102,6 +107,8 @@ export function loadState() {
         chatbot: { ...base.captacion.chatbot, ...((parsed.captacion || {}).chatbot || {}) }
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
+      desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
+      modulos: { ...base.modulos, ...(parsed.modulos || {}) },
       entidades,
       reporteria: {
         ...base.reporteria,
@@ -154,6 +161,13 @@ export function buildCanonicalJSON(state) {
       impuestos: state.empresa.impuestos
         .filter((t) => (t.nombre || "").trim())
         .map((t) => ({ nombre: t.nombre.trim(), porcentaje: String(t.porcentaje == null ? "" : t.porcentaje).trim() }))
+    },
+    // Desarrollos seleccionados (paquete proceso + módulos sueltos).
+    desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),
+    modulos: {
+      chatbot: (state.modulos.chatbot || "").trim(),
+      api: (state.modulos.api || "").trim(),
+      app: (state.modulos.app || "").trim()
     },
     captacionDeClientes: {
       canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),

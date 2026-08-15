@@ -11,6 +11,10 @@ import { renderModuloStep, attachModuloListeners } from "./steps/moduloStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 
 let state = loadState();
+// Auto-reparación: si el borrador guardado es de una versión anterior y no
+// trae estos campos, los inicializamos para que la app nunca se rompa.
+if (!state.desarrollos) state.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false };
+if (!state.modulos) state.modulos = { chatbot: "", api: "", app: "" };
 let currentStep = 0;
 
 const devMode = new URLSearchParams(window.location.search).get("dev") === "1";
