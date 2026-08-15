@@ -130,3 +130,20 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .ej-pill.prog{border-color:#B5D4F4;color:#185FA5}
 .ej-pill.suc{border-color:#5DCAA5;color:#0F6E56}
 .ej-pill.loss{border-color:#F0997B;color:#993C1D}
+
+/* ===== Selección de desarrollos (checklist) ===== */
+.sel-fixed { display:flex; gap:8px; align-items:center; background:#EBF4FB; color:#056AA1; border-radius:8px; padding:8px 12px; margin:12px 0 16px; font-size:13px; }
+.sel-grid { display:grid; gap:10px; }
+.sel-card { display:flex; gap:12px; align-items:flex-start; border:1px solid #e2e2e2; border-radius:12px; padding:12px 14px; cursor:pointer; background:#fff; transition:border-color .12s; }
+.sel-card:hover:not(.locked) { border-color:#056AA1; }
+.sel-card.on { border:2px solid #056AA1; }
+.sel-card.locked { opacity:.55; cursor:not-allowed; }
+.sel-check { width:22px; height:22px; border-radius:6px; border:1.5px solid #c9c9c9; flex:0 0 auto; display:flex; align-items:center; justify-content:center; color:#fff; }
+.sel-card.on .sel-check { background:#056AA1; border-color:#056AA1; }
+.sel-body { flex:1; min-width:0; }
+.sel-title { font-weight:600; font-size:15px; display:flex; align-items:center; gap:8px; }
+.sel-desc { font-size:13px; color:#666; margin-top:2px; }
+.sel-badges { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.sel-badge { font-size:11px; background:#EBF4FB; color:#056AA1; padding:2px 8px; border-radius:20px; }
+.sel-lock { font-size:12px; color:#856404; margin-top:6px; }
+.sel-dedup { display:flex; gap:8px; align-items:flex-start; background:#FFF3CD; color:#856404; border-radius:8px; padding:10px 12px; margin-top:14px; font-size:13px; }
