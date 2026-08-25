@@ -55,8 +55,24 @@ export function defaultState() {
     // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
     // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
     desarrollos: { proceso: false, reportes: false, chatbot: false, api: false, app: false },
-    // Datos libres de los módulos nuevos (sus preguntas detalladas se agregan luego).
-    modulos: { chatbot: "", api: "", app: "" },
+    // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
+    modulos: { api: "", app: "" },
+    // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
+    chatbot: {
+      tipoBot: "",              // "menus" | "conversacional"
+      plataforma: "",
+      plataformaOtro: "",
+      objetivo: "",
+      // Rama A — bot de menús (menús planos): cada menú tiene acciones.
+      menus: [],               // [{ nombre, acciones: [{ tipo, entidad, descripcion, condicion }] }]
+      // Rama B — bot conversacional / IA
+      bienvenida: "",
+      conocimiento: "",
+      intentosDerivar: "",
+      derivaA: "",
+      // Común a ambos
+      fallback: ""
+    },
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
@@ -109,6 +125,11 @@ export function loadState() {
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
+      chatbot: {
+        ...base.chatbot,
+        ...(parsed.chatbot || {}),
+        menus: Array.isArray((parsed.chatbot || {}).menus) ? parsed.chatbot.menus : base.chatbot.menus
+      },
       entidades,
       reporteria: {
         ...base.reporteria,
@@ -146,6 +167,41 @@ export function resetState() {
 function cleanStages(arr) { return arr.map((s) => s.trim()).filter(Boolean); }
 function cleanFields(arr) { return arr.filter((f) => f.nombre.trim()).map((f) => ({ nombre: f.nombre.trim(), tipo: f.tipo })); }
 
+function buildChatbot(cb) {
+  const base = {
+    tipoBot: cb.tipoBot || "",
+    plataforma: cb.plataforma === "Otra" ? (cb.plataformaOtro || "").trim() : (cb.plataforma || ""),
+    objetivo: (cb.objetivo || "").trim(),
+    fallback: (cb.fallback || "").trim()
+  };
+  if (cb.tipoBot === "conversacional") {
+    return {
+      ...base,
+      bienvenida: (cb.bienvenida || "").trim(),
+      conocimiento: (cb.conocimiento || "").trim(),
+      intentosDerivar: String(cb.intentosDerivar == null ? "" : cb.intentosDerivar).trim(),
+      derivaA: (cb.derivaA || "").trim()
+    };
+  }
+  // menús (default)
+  return {
+    ...base,
+    menus: (cb.menus || [])
+      .filter((m) => (m.nombre || "").trim() || (m.acciones || []).length)
+      .map((m) => ({
+        nombre: (m.nombre || "").trim(),
+        acciones: (m.acciones || [])
+          .filter((a) => (a.descripcion || "").trim() || (a.tipo || "").trim())
+          .map((a) => ({
+            tipo: a.tipo || "",
+            entidad: (a.entidad || "").trim(),
+            descripcion: (a.descripcion || "").trim(),
+            condicion: (a.condicion || "").trim()
+          }))
+      }))
+  };
+}
+
 export function buildCanonicalJSON(state) {
   const out = {
     cliente: state.cliente.trim(),
@@ -165,10 +221,10 @@ export function buildCanonicalJSON(state) {
     // Desarrollos seleccionados (paquete proceso + módulos sueltos).
     desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),
     modulos: {
-      chatbot: (state.modulos.chatbot || "").trim(),
       api: (state.modulos.api || "").trim(),
       app: (state.modulos.app || "").trim()
     },
+    chatbot: buildChatbot(state.chatbot),
     captacionDeClientes: {
       canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),
       otrosCanales: state.captacion.otros.trim(),

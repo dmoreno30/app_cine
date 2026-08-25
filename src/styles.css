@@ -147,3 +147,13 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .sel-badge { font-size:11px; background:#EBF4FB; color:#056AA1; padding:2px 8px; border-radius:20px; }
 .sel-lock { font-size:12px; color:#856404; margin-top:6px; }
 .sel-dedup { display:flex; gap:8px; align-items:flex-start; background:#FFF3CD; color:#856404; border-radius:8px; padding:10px 12px; margin-top:14px; font-size:13px; }
+
+/* ===== Chatbot: menús y acciones ===== */
+.bot-menu { border:1px solid #e2e2e2; border-radius:12px; padding:12px; margin-bottom:12px; background:#fafafa; }
+.bot-menu-head { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.bot-menu-head input { font-weight:600; }
+.bot-acciones { display:flex; flex-direction:column; gap:8px; }
+.bot-accion { border:1px solid #e6e6e6; border-radius:8px; padding:8px; background:#fff; display:flex; flex-direction:column; gap:6px; }
+.bot-accion-top { display:flex; gap:6px; align-items:center; }
+.bot-accion-top select { flex:0 0 auto; }
+.add-btn.small { font-size:12px; padding:4px 10px; margin-top:8px; }

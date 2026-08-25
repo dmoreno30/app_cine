@@ -60,6 +60,35 @@ export const ENTIDADES = {
 // Orden en que aparecen las pestañas dentro de "Proceso Comercial"
 export const ORDEN_ENTIDADES = ["prospectos", "negociaciones", "contactos", "companias", "cotizaciones", "facturas", "postventa"];
 
+// Plataformas/canales donde puede correr el flujo del chatbot (módulo Chatbot).
+export const PLATAFORMAS_CHATBOT = [
+  "WhatsApp (vía Wazzup)",
+  "Chat en vivo / Web",
+  "Instagram",
+  "Facebook Messenger",
+  "Telegram",
+  "Otra"
+];
+
+// Chatbot — tipos de acción dentro de un menú. `entidad:true` = muestra el
+// selector de entidad de Bitrix24 (Buscar / Crear registro).
+export const TIPOS_ACCION_BOT = [
+  { key: "mensaje", label: "Mensaje", entidad: false },
+  { key: "pedir_dato", label: "Pedir dato", entidad: false },
+  { key: "buscar", label: "Buscar en Bitrix24", entidad: true },
+  { key: "crear", label: "Crear registro en Bitrix24", entidad: true },
+  { key: "condicion", label: "Condición (si/entonces)", entidad: false },
+  { key: "derivar", label: "Derivar a asesor", entidad: false },
+  { key: "ir_menu", label: "Ir a otro menú", entidad: false },
+  { key: "volver", label: "Volver al menú anterior", entidad: false }
+];
+
+// Entidades de Bitrix24 elegibles en acciones Buscar / Crear registro.
+export const ENTIDADES_BOT = [
+  "Contactos", "Compañías", "Prospectos", "Negociaciones",
+  "Tareas", "Cotizaciones", "Facturas", "SPA / Proceso", "Lista", "Otra"
+];
+
 export const TIPOS_CAMPO = ["Texto", "Lista", "Fecha", "Numérico", "Sí/No"];
 
 // Monedas con las que puede operar el cliente (multi-selección en "Sobre la empresa").
