@@ -1,6 +1,5 @@
 import { buildCanonicalJSON, resetState } from "../state.js";
 import { CANALES, ENTIDADES, ORDEN_ENTIDADES } from "../data/config.js";
-import { REPORTES_PROSPECTOS, REPORTES_NEGOCIACIONES } from "../data/reportes.js";
 import { escapeHtml } from "../utils.js";
 import { submitCaptura } from "../submit.js";
 
@@ -19,11 +18,11 @@ function resumenEntidades(state) {
 }
 
 function resumenReportes(state) {
-  const nombres = [];
-  REPORTES_PROSPECTOS.forEach((r) => { if (state.reporteria.prospectos[r.key]) nombres.push(r.label); });
-  REPORTES_NEGOCIACIONES.forEach((r) => { if (state.reporteria.negociaciones[r.key]) nombres.push(r.label); });
-  if (state.reporteria.otros.trim()) nombres.push(state.reporteria.otros.trim());
-  return nombres;
+  const rep = state.reporteria || {};
+  if (Array.isArray(rep.reportes)) {
+    return rep.reportes.map((r) => (r.nombre || "").trim()).filter(Boolean);
+  }
+  return []; // modelo viejo / borrador previo: sin resumen (no rompe)
 }
 
 function grupo(titulo, items) {
