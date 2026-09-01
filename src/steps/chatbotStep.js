@@ -10,15 +10,19 @@ const tipoNecesitaEntidad = (tipo) => {
 };
 
 function renderComunes(cb) {
-  const opciones = PLATAFORMAS_CHATBOT.map((p) =>
-    `<option value="${escapeAttr(p)}" ${cb.plataforma === p ? "selected" : ""}>${p}</option>`).join("");
-  const otro = cb.plataforma === "Otra"
-    ? `<input type="text" data-cb-plataforma-otro value="${escapeAttr(cb.plataformaOtro)}" placeholder="¿En qué plataforma?" style="margin-top:8px">` : "";
+  const chips = PLATAFORMAS_CHATBOT.filter((p) => p !== "Otra").map((p) => {
+    const on = (cb.plataformas || {})[p];
+    return `<div class="canal-chip ${on ? "on" : ""}" data-cb-plat="${escapeAttr(p)}">${p}</div>`;
+  }).join("");
   return `
     <div class="field-block">
-      <label class="field-label">¿En qué plataforma / canal corre el bot?</label>
-      <select data-cb-plataforma><option value="">Seleccioná una opción…</option>${opciones}</select>
-      ${otro}
+      <label class="field-label">¿En qué canal(es) va a estar el bot? <span style="font-weight:400;color:var(--text-secondary)">— podés marcar varios</span></label>
+      <div class="canal-grid">${chips}</div>
+      <input type="text" data-cb-plataforma-otro value="${escapeAttr(cb.plataformaOtro)}" placeholder="Otros canales no listados" style="margin-top:8px">
+    </div>
+    <div class="field-block">
+      <label class="field-label">¿Con qué se construirá el bot?</label>
+      <input type="text" data-cb-herramienta value="${escapeAttr(cb.herramienta)}" placeholder="Ej. ManyChat, herramienta interna de Bitrix24, n8n, desarrollo propio…">
     </div>
     <div class="field-block">
       <label class="field-label">Objetivo del bot</label>
@@ -124,10 +128,15 @@ export function attachChatbotListeners(container, state, onChange) {
   // Tipo de bot (rerender: cambian las preguntas)
   container.querySelectorAll("[data-cb-tipo]").forEach((el) => el.addEventListener("click", () => { cb.tipoBot = el.getAttribute("data-cb-tipo"); onChange({ rerender: true }); }));
 
-  // Plataforma
-  const plat = container.querySelector("[data-cb-plataforma]");
-  if (plat) plat.addEventListener("change", (e) => { cb.plataforma = e.target.value; onChange({ rerender: true }); });
+  // Plataformas (multi-selección tipo chip)
+  container.querySelectorAll("[data-cb-plat]").forEach((el) => el.addEventListener("click", () => {
+    const p = el.getAttribute("data-cb-plat");
+    if (!cb.plataformas) cb.plataformas = {};
+    cb.plataformas[p] = !cb.plataformas[p];
+    onChange({ rerender: true });
+  }));
   bindInput("[data-cb-plataforma-otro]", "plataformaOtro");
+  bindInput("[data-cb-herramienta]", "herramienta");
   bindInput("[data-cb-objetivo]", "objetivo");
   bindInput("[data-cb-fallback]", "fallback");
 

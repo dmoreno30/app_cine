@@ -59,8 +59,9 @@ export function defaultState() {
     // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
     chatbot: {
       tipoBot: "",              // "menus" | "conversacional"
-      plataforma: "",
+      plataformas: {},          // multi-selección: { [canal]: true }
       plataformaOtro: "",
+      herramienta: "",          // ¿con qué se construirá el bot?
       objetivo: "",
       // Rama A — bot de menús (menús planos): cada menú tiene acciones.
       menus: [],               // [{ nombre, acciones: [{ tipo, entidad, descripcion, condicion }] }]
@@ -125,6 +126,7 @@ export function loadState() {
       chatbot: {
         ...base.chatbot,
         ...(parsed.chatbot || {}),
+        plataformas: { ...base.chatbot.plataformas, ...((parsed.chatbot || {}).plataformas || {}) },
         menus: Array.isArray((parsed.chatbot || {}).menus) ? parsed.chatbot.menus : base.chatbot.menus
       },
       entidades,
@@ -162,9 +164,12 @@ function cleanStages(arr) { return arr.map((s) => s.trim()).filter(Boolean); }
 function cleanFields(arr) { return arr.filter((f) => f.nombre.trim()).map((f) => ({ nombre: f.nombre.trim(), tipo: f.tipo })); }
 
 function buildChatbot(cb) {
+  const plataformas = Object.keys(cb.plataformas || {}).filter((k) => cb.plataformas[k]);
+  if ((cb.plataformaOtro || "").trim()) plataformas.push(cb.plataformaOtro.trim());
   const base = {
     tipoBot: cb.tipoBot || "",
-    plataforma: cb.plataforma === "Otra" ? (cb.plataformaOtro || "").trim() : (cb.plataforma || ""),
+    plataformas,
+    herramienta: (cb.herramienta || "").trim(),
     objetivo: (cb.objetivo || "").trim(),
     fallback: (cb.fallback || "").trim()
   };
