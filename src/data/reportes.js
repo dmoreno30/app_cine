@@ -1,18 +1,35 @@
-// Reportes comunes que se le sugieren al cliente como referencia.
-// Se agrupan por entidad para poder ocultar el grupo si esa entidad
-// está deshabilitada en Proceso Comercial.
-export const REPORTES_PROSPECTOS = [
-  { key: "origen", label: "Reporte por origen" },
-  { key: "por_responsable", label: "Prospectos por responsable (en progreso, descarte agrupados, éxito)" },
-  { key: "tasa_conversion", label: "Tasa de prospectos convertidos" },
-  { key: "ingreso_vs_conversion_dia", label: "Cantidad de prospectos que ingresan en un día vs. cantidad convertidos en el mismo día" }
-];
-
-export const REPORTES_NEGOCIACIONES = [
-  { key: "por_responsable", label: "Negociaciones por responsable (en progreso, descarte agrupados, éxito)" },
-  { key: "tasa_ganadas_pipeline", label: "Tasa de negociaciones ganadas por pipeline" },
-  { key: "creadas_vs_ganadas_dia", label: "Cantidad de negociaciones creadas en un día vs. cantidad ganadas en el mismo día" },
-  { key: "por_contacto", label: "Negociaciones por cada contacto" },
-  { key: "por_contacto_status", label: "Negociaciones por cada contacto y su status (en progreso, descarte agrupados, éxito)" },
-  { key: "tiempo_promedio", label: "Tiempo promedio que dura una negociación (creada vs. finalizada, ganada o perdida)" }
+// Catálogo de reportes comunes. Cada uno trae valores por defecto para las 5
+// filas. Al agregarlo desde el formulario, se copia y queda EDITABLE.
+// "consideraciones" arranca vacío (placeholder "(a completar)").
+export const CATALOGO_REPORTES = [
+  { key: "origen", nombre: "Reporte por origen",
+    queMuestra: "Cantidad de prospectos por canal de origen.", entidad: "Prospectos",
+    filtros: "Fecha, canal, responsable.", tipoVisualizacion: "Barras", consideraciones: "" },
+  { key: "prospectos_responsable", nombre: "Prospectos por responsable (progreso / descarte / éxito)",
+    queMuestra: "Prospectos por responsable, agrupados en progreso / descarte / éxito.", entidad: "Prospectos",
+    filtros: "Fecha, responsable.", tipoVisualizacion: "Tabla resumen", consideraciones: "" },
+  { key: "tasa_conversion", nombre: "Tasa de prospectos convertidos",
+    queMuestra: "Porcentaje de prospectos que se convierten en negociación.", entidad: "Prospectos",
+    filtros: "Fecha, canal, responsable.", tipoVisualizacion: "Indicador (KPI)", consideraciones: "" },
+  { key: "ingreso_vs_conversion", nombre: "Prospectos ingresados vs. convertidos en el mismo día",
+    queMuestra: "Prospectos ingresados vs. convertidos en el mismo día.", entidad: "Prospectos",
+    filtros: "Fecha.", tipoVisualizacion: "Líneas comparativas", consideraciones: "" },
+  { key: "negociaciones_responsable", nombre: "Negociaciones por responsable (progreso / descarte / éxito)",
+    queMuestra: "Negociaciones por responsable, agrupadas en progreso / descarte / éxito.", entidad: "Negociaciones",
+    filtros: "Fecha, responsable.", tipoVisualizacion: "Tabla resumen", consideraciones: "" },
+  { key: "tasa_ganadas", nombre: "Tasa de negociaciones ganadas por pipeline",
+    queMuestra: "Porcentaje de negociaciones ganadas, por pipeline.", entidad: "Negociaciones",
+    filtros: "Fecha, pipeline.", tipoVisualizacion: "Indicador (KPI) + barras", consideraciones: "" },
+  { key: "creadas_vs_ganadas", nombre: "Negociaciones creadas vs. ganadas en el mismo día",
+    queMuestra: "Negociaciones creadas vs. ganadas en el mismo día.", entidad: "Negociaciones",
+    filtros: "Fecha.", tipoVisualizacion: "Líneas comparativas", consideraciones: "" },
+  { key: "por_contacto", nombre: "Negociaciones por cada contacto",
+    queMuestra: "Negociaciones asociadas a cada contacto.", entidad: "Negociaciones + Contactos",
+    filtros: "Contacto, fecha.", tipoVisualizacion: "Tabla detalle", consideraciones: "" },
+  { key: "por_contacto_status", nombre: "Negociaciones por contacto y su status",
+    queMuestra: "Negociaciones por contacto, con su status actual (progreso / descarte / éxito).", entidad: "Negociaciones + Contactos",
+    filtros: "Contacto, status.", tipoVisualizacion: "Tabla detalle", consideraciones: "" },
+  { key: "tiempo_promedio", nombre: "Tiempo promedio de duración de una negociación",
+    queMuestra: "Tiempo promedio entre creación y cierre de una negociación (ganada o perdida).", entidad: "Negociaciones",
+    filtros: "Fecha, pipeline.", tipoVisualizacion: "Indicador (KPI)", consideraciones: "" }
 ];

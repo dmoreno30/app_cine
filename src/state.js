@@ -1,5 +1,4 @@
 import { CANALES, ENTIDADES, MONEDAS } from "./data/config.js";
-import { REPORTES_PROSPECTOS, REPORTES_NEGOCIACIONES } from "./data/reportes.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
 
@@ -81,9 +80,7 @@ export function defaultState() {
     entidadesHabilitadas,
     entidades,
     reporteria: {
-      prospectos: Object.fromEntries(REPORTES_PROSPECTOS.map((r) => [r.key, false])),
-      negociaciones: Object.fromEntries(REPORTES_NEGOCIACIONES.map((r) => [r.key, false])),
-      otros: ""
+      reportes: []   // [{ nombre, queMuestra, entidad, filtros, tipoVisualizacion, consideraciones }]
     }
   };
 }
@@ -132,10 +129,7 @@ export function loadState() {
       },
       entidades,
       reporteria: {
-        ...base.reporteria,
-        ...(parsed.reporteria || {}),
-        prospectos: { ...base.reporteria.prospectos, ...((parsed.reporteria || {}).prospectos || {}) },
-        negociaciones: { ...base.reporteria.negociaciones, ...((parsed.reporteria || {}).negociaciones || {}) }
+        reportes: Array.isArray((parsed.reporteria || {}).reportes) ? parsed.reporteria.reportes : base.reporteria.reportes
       }
     };
   } catch (e) {
@@ -273,9 +267,16 @@ export function buildCanonicalJSON(state) {
   });
 
   out.reporteria = {
-    prospectos: Object.keys(state.reporteria.prospectos).filter((k) => state.reporteria.prospectos[k]),
-    negociaciones: Object.keys(state.reporteria.negociaciones).filter((k) => state.reporteria.negociaciones[k]),
-    otros: state.reporteria.otros.trim()
+    reportes: (state.reporteria.reportes || [])
+      .filter((r) => (r.nombre || "").trim() || (r.queMuestra || "").trim())
+      .map((r) => ({
+        nombre: (r.nombre || "").trim(),
+        queMuestra: (r.queMuestra || "").trim(),
+        entidad: (r.entidad || "").trim(),
+        filtros: (r.filtros || "").trim(),
+        tipoVisualizacion: (r.tipoVisualizacion || "").trim(),
+        consideraciones: (r.consideraciones || "").trim()
+      }))
   };
 
   return out;

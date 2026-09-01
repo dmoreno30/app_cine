@@ -102,3 +102,7 @@ export const MONEDAS = [
   { key: "CLP", label: "Peso chileno (CLP)" },
   { key: "ARS", label: "Peso argentino (ARS)" }
 ];
+
+// Reportería — sugerencias para los campos editables de cada reporte.
+export const TIPOS_VISUALIZACION = ["Tabla", "Tabla resumen", "Tabla detalle", "Barras", "Líneas comparativas", "Indicador (KPI)", "Embudo", "Torta", "Otra"];
+export const ENTIDADES_REPORTE = ["Prospectos", "Negociaciones", "Contactos", "Compañías", "Tareas", "Cotizaciones", "Facturas", "Negociaciones + Contactos", "Negociación + Tareas"];

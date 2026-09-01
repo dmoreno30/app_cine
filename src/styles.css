@@ -157,3 +157,13 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .bot-accion-top { display:flex; gap:6px; align-items:center; }
 .bot-accion-top select { flex:0 0 auto; }
 .add-btn.small { font-size:12px; padding:4px 10px; margin-top:8px; }
+
+/* ===== Reportería: catálogo + reportes editables ===== */
+.rep-catalogo { display:flex; flex-wrap:wrap; gap:6px; }
+.rep-cat-btn { font-size:12.5px; padding:6px 11px; border-radius:20px; border:1px solid #cfe0ec; background:#EBF4FB; color:#056AA1; cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.rep-cat-btn:hover { background:#d8ecfb; }
+.rep-card { border:1px solid #e2e2e2; border-radius:12px; padding:12px; margin-bottom:12px; background:#fafafa; }
+.rep-head { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+.rep-nombre { font-weight:600; }
+.rep-field { margin-bottom:8px; }
+.rep-field label { display:block; font-size:12px; color:#666; margin-bottom:2px; }
