@@ -8,6 +8,7 @@ import { renderCaptacionStep, attachCaptacionListeners } from "./steps/captacion
 import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./steps/procesoComercialStep.js";
 import { renderReporteriaStep, attachReporteriaListeners } from "./steps/reporteriaStep.js";
 import { renderModuloStep, attachModuloListeners } from "./steps/moduloStep.js";
+import { renderChatbotStep, attachChatbotListeners } from "./steps/chatbotStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 
 let state = loadState();
@@ -49,7 +50,8 @@ function render() {
   else if (stepKey === "captacion") bodyHtml = renderCaptacionStep(state);
   else if (stepKey === "proceso") bodyHtml = renderProcesoComercialStep(state);
   else if (stepKey === "reporteria") bodyHtml = renderReporteriaStep(state);
-  else if (stepKey === "chatbot" || stepKey === "api" || stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
+  else if (stepKey === "chatbot") bodyHtml = renderChatbotStep(state);
+  else if (stepKey === "api" || stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, devMode);
 
   app.innerHTML = `
@@ -76,7 +78,8 @@ function render() {
   else if (stepKey === "captacion") attachCaptacionListeners(card, state, onChange);
   else if (stepKey === "proceso") attachProcesoComercialListeners(card, state, onChange);
   else if (stepKey === "reporteria") attachReporteriaListeners(card, state, onChange);
-  else if (stepKey === "chatbot" || stepKey === "api" || stepKey === "app") attachModuloListeners(card, state, onChange, stepKey);
+  else if (stepKey === "chatbot") attachChatbotListeners(card, state, onChange);
+  else if (stepKey === "api" || stepKey === "app") attachModuloListeners(card, state, onChange, stepKey);
   else if (stepKey === "confirmacion") attachConfirmacionListeners(card, state, onChange, inviteToken);
 }
 
