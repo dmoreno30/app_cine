@@ -7,7 +7,8 @@ const DESARROLLOS = [
   { key: "reportes", icon: "ti-chart-bar", label: "Reportes", desc: "Solo tableros e indicadores de gestión", paquete: [] },
   { key: "chatbot", icon: "ti-message-chatbot", label: "Chatbot", desc: "Flujo del bot sobre una plataforma vinculada a Bitrix24", paquete: [] },
   { key: "api", icon: "ti-plug-connected", label: "Creación de API", desc: "Integración con terceros", paquete: [] },
-  { key: "app", icon: "ti-app-window", label: "Creación de aplicación", desc: "Desarrollo de una app a medida", paquete: [] }
+  { key: "app", icon: "ti-app-window", label: "Creación de aplicación", desc: "Desarrollo de una app a medida", paquete: [] },
+  { key: "rrhh", icon: "ti-users-group", label: "Procesos de gestión de RRHH", desc: "Vacaciones, permisos, adelantos, contratación, despidos…", paquete: [] }
 ];
 
 function ensureDesarrollos(state) {

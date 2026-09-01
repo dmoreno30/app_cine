@@ -8,6 +8,7 @@ const PASO_REPORTERIA = { key: "reporteria", label: "Reportería", icon: "ti-cha
 const PASO_CHATBOT = { key: "chatbot", label: "Chatbot", icon: "ti-message-chatbot" };
 const PASO_API = { key: "api", label: "API / Integración", icon: "ti-plug-connected" };
 const PASO_APP = { key: "app", label: "Aplicación", icon: "ti-app-window" };
+const PASO_RRHH = { key: "rrhh", label: "Gestión de RRHH", icon: "ti-users-group" };
 const PASO_CONFIRMACION = { key: "confirmacion", label: "Generar iCINE", icon: "ti-clipboard-check" };
 
 // Devuelve los pasos activos, en orden, según state.desarrollos.
@@ -22,6 +23,7 @@ export function getPasos(state) {
   if (d.chatbot) pasos.push(PASO_CHATBOT);
   if (d.api) pasos.push(PASO_API);
   if (d.app) pasos.push(PASO_APP);
+  if (d.rrhh) pasos.push(PASO_RRHH);
   pasos.push(PASO_CONFIRMACION);
   return pasos;
 }

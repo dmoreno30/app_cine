@@ -1,4 +1,5 @@
 import { CANALES, ENTIDADES, MONEDAS } from "./data/config.js";
+import { CATALOGO_RRHH, CAMPOS_RRHH } from "./data/rrhh.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
 
@@ -53,7 +54,7 @@ export function defaultState() {
     },
     // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
     // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
-    desarrollos: { proceso: false, reportes: false, chatbot: false, api: false, app: false },
+    desarrollos: { proceso: false, reportes: false, chatbot: false, api: false, app: false, rrhh: false },
     // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
     modulos: { api: "", app: "" },
     // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
@@ -73,6 +74,8 @@ export function defaultState() {
       // Común a ambos
       fallback: ""
     },
+    // Procesos de gestión de RRHH (lista de procesos elegidos, cada uno con sus campos).
+    rrhh: { procesos: [] },
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
@@ -122,6 +125,7 @@ export function loadState() {
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
+      rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
       chatbot: {
         ...base.chatbot,
@@ -162,6 +166,31 @@ export function resetState() {
 
 function cleanStages(arr) { return arr.map((s) => s.trim()).filter(Boolean); }
 function cleanFields(arr) { return arr.filter((f) => f.nombre.trim()).map((f) => ({ nombre: f.nombre.trim(), tipo: f.tipo })); }
+
+function buildRRHH(rr) {
+  const procesos = (rr && Array.isArray(rr.procesos) ? rr.procesos : [])
+    .map((pr) => {
+      const cat = CATALOGO_RRHH.find((c) => c.key === pr.tipo);
+      if (!cat) return null;
+      const campos = [];
+      let aprobadores = [];
+      cat.campos.forEach((fk) => {
+        const meta = CAMPOS_RRHH[fk];
+        if (!meta) return;
+        if (meta.tipo === "aprobadores") {
+          aprobadores = (pr.aprobadores || []).map((a) => (a || "").trim()).filter(Boolean);
+        } else {
+          const v = (pr[fk] || "").trim();
+          campos.push({ label: meta.label, valor: v });
+        }
+      });
+      return { tipo: pr.tipo, label: cat.label, campos, aprobadores };
+    })
+    .filter(Boolean)
+    // incluir solo procesos con algún dato cargado
+    .filter((pr) => pr.aprobadores.length || pr.campos.some((c) => c.valor));
+  return { procesos };
+}
 
 function buildChatbot(cb) {
   const plataformas = Object.keys(cb.plataformas || {}).filter((k) => cb.plataformas[k]);
@@ -224,6 +253,7 @@ export function buildCanonicalJSON(state) {
       app: (state.modulos.app || "").trim()
     },
     chatbot: buildChatbot(state.chatbot),
+    rrhh: buildRRHH(state.rrhh),
     captacionDeClientes: {
       canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),
       otrosCanales: state.captacion.otros.trim(),

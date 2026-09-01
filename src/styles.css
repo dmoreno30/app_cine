@@ -167,3 +167,6 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .rep-nombre { font-weight:600; }
 .rep-field { margin-bottom:8px; }
 .rep-field label { display:block; font-size:12px; color:#666; margin-bottom:2px; }
+
+/* ===== RRHH: aprobadores en secuencia ===== */
+.apr-num { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:#056AA1; color:#fff; font-size:12px; display:inline-flex; align-items:center; justify-content:center; }

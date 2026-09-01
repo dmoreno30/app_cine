@@ -9,6 +9,7 @@ import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./s
 import { renderReporteriaStep, attachReporteriaListeners } from "./steps/reporteriaStep.js";
 import { renderModuloStep, attachModuloListeners } from "./steps/moduloStep.js";
 import { renderChatbotStep, attachChatbotListeners } from "./steps/chatbotStep.js";
+import { renderRRHHStep, attachRRHHListeners } from "./steps/rrhhStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 
 let state = loadState();
@@ -16,6 +17,8 @@ let state = loadState();
 // trae estos campos, los inicializamos para que la app nunca se rompa.
 if (!state.desarrollos) state.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false };
 if (!state.modulos) state.modulos = { chatbot: "", api: "", app: "" };
+if (!state.desarrollos.rrhh && state.desarrollos.rrhh !== false) state.desarrollos.rrhh = false;
+if (!state.rrhh) state.rrhh = { procesos: [] };
 let currentStep = 0;
 
 const devMode = new URLSearchParams(window.location.search).get("dev") === "1";
@@ -51,6 +54,7 @@ function render() {
   else if (stepKey === "proceso") bodyHtml = renderProcesoComercialStep(state);
   else if (stepKey === "reporteria") bodyHtml = renderReporteriaStep(state);
   else if (stepKey === "chatbot") bodyHtml = renderChatbotStep(state);
+  else if (stepKey === "rrhh") bodyHtml = renderRRHHStep(state);
   else if (stepKey === "api" || stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, devMode);
 
@@ -79,6 +83,7 @@ function render() {
   else if (stepKey === "proceso") attachProcesoComercialListeners(card, state, onChange);
   else if (stepKey === "reporteria") attachReporteriaListeners(card, state, onChange);
   else if (stepKey === "chatbot") attachChatbotListeners(card, state, onChange);
+  else if (stepKey === "rrhh") attachRRHHListeners(card, state, onChange);
   else if (stepKey === "api" || stepKey === "app") attachModuloListeners(card, state, onChange, stepKey);
   else if (stepKey === "confirmacion") attachConfirmacionListeners(card, state, onChange, inviteToken);
 }
