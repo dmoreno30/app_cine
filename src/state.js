@@ -76,6 +76,17 @@ export function defaultState() {
     },
     // Procesos de gestión de RRHH (lista de procesos elegidos, cada uno con sus campos).
     rrhh: { procesos: [] },
+    // API / Integración con software externo
+    api: {
+      otroSoftware: "",
+      dirBitrixHaciaOtro: false,   // Bitrix24 → externo
+      dirOtroHaciaBitrix: false,   // externo → Bitrix24
+      webService: false,           // ¿se construye un web service / API propia?
+      webServiceNota: "",
+      flujos: [],                  // [{ objeto, direccion, descripcion, mapeaId, consideraciones }]
+      sincronizaProductos: false,
+      codigoProductos: ""
+    },
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
@@ -126,6 +137,7 @@ export function loadState() {
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
+      api: { ...base.api, ...(parsed.api || {}), flujos: Array.isArray((parsed.api || {}).flujos) ? parsed.api.flujos : base.api.flujos },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
       chatbot: {
         ...base.chatbot,
@@ -166,6 +178,28 @@ export function resetState() {
 
 function cleanStages(arr) { return arr.map((s) => s.trim()).filter(Boolean); }
 function cleanFields(arr) { return arr.filter((f) => f.nombre.trim()).map((f) => ({ nombre: f.nombre.trim(), tipo: f.tipo })); }
+
+function buildAPI(a) {
+  a = a || {};
+  return {
+    otroSoftware: (a.otroSoftware || "").trim(),
+    dirBitrixHaciaOtro: !!a.dirBitrixHaciaOtro,
+    dirOtroHaciaBitrix: !!a.dirOtroHaciaBitrix,
+    webService: !!a.webService,
+    webServiceNota: (a.webServiceNota || "").trim(),
+    flujos: (a.flujos || [])
+      .filter((f) => (f.objeto || "").trim() || (f.descripcion || "").trim())
+      .map((f) => ({
+        objeto: (f.objeto || "").trim(),
+        direccion: f.direccion || "",
+        descripcion: (f.descripcion || "").trim(),
+        mapeaId: !!f.mapeaId,
+        consideraciones: (f.consideraciones || "").trim()
+      })),
+    sincronizaProductos: !!a.sincronizaProductos,
+    codigoProductos: (a.codigoProductos || "").trim()
+  };
+}
 
 function buildRRHH(rr) {
   const procesos = (rr && Array.isArray(rr.procesos) ? rr.procesos : [])
@@ -254,6 +288,7 @@ export function buildCanonicalJSON(state) {
     },
     chatbot: buildChatbot(state.chatbot),
     rrhh: buildRRHH(state.rrhh),
+    api: buildAPI(state.api),
     captacionDeClientes: {
       canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),
       otrosCanales: state.captacion.otros.trim(),
