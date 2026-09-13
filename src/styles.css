@@ -170,3 +170,17 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 
 /* ===== RRHH: aprobadores en secuencia ===== */
 .apr-num { flex:0 0 auto; width:22px; height:22px; border-radius:50%; background:#056AA1; color:#fff; font-size:12px; display:inline-flex; align-items:center; justify-content:center; }
+
+/* ===== Checkbox en línea (API) ===== */
+.chk-line { display:flex; align-items:flex-start; gap:8px; font-size:13.5px; color:#333; margin:6px 0; cursor:pointer; line-height:1.35; }
+.chk-line input[type=checkbox] { margin-top:2px; flex:0 0 auto; }
+
+/* ===== Barra de sesión ===== */
+.sesion-bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; background:#f3f6f9; border:1px solid #e2e8ee; border-radius:10px; padding:8px 12px; margin:10px 0; font-size:13px; }
+.sesion-bar .sb-item { color:#333; }
+.sesion-bar .sb-sep { flex:0 0 12px; }
+.sesion-bar select, .sesion-bar input { font-size:13px; padding:5px 8px; border:1px solid #cfd8e0; border-radius:6px; }
+.sb-btn { font-size:13px; padding:6px 12px; border-radius:6px; border:1px solid #cfd8e0; background:#fff; cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.sb-btn.primary { background:#056AA1; color:#fff; border-color:#056AA1; }
+.sb-btn:hover { filter:brightness(0.97); }
+.sb-status { margin-left:auto; color:#056AA1; font-weight:600; }
