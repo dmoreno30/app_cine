@@ -1,5 +1,4 @@
 import { loadState, resetState } from "./state.js";
-import { buildCanonicalJSON } from "./state.js";
 import { getPasos, renderStepper, attachStepperListeners } from "./components/stepper.js";
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
@@ -15,17 +14,19 @@ import { renderAPIStep, attachAPIListeners } from "./steps/apiStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 import { initBitrix, obtenerContextoBX, enBitrix } from "./bitrix.js";
 import { listarDesarrollos, crearDesarrollo, cargarDesarrollo, guardarDesarrollo } from "./apiCliente.js";
+import { escapeHtml, escapeAttr } from "./utils.js";
 
-let state = loadState();
-normalizar(state);
+let state = normalizar(resetState());
 let currentStep = 0;
-const devMode = new URLSearchParams(window.location.search).get("dev") === "1";
+let vista = "inicio";            // "inicio" | "form"
+let cargando = true;
+const devProy = new URLSearchParams(window.location.search).get("proyecto"); // fallback de prueba
 
-// Sesión de trabajo (un desarrollo = un registro en la Lista)
-const sesion = { elementId: null, proyectoId: null, usuario: null, tipo: "icine", lista: [], status: "" };
+const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", usuario: null };
+const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "" };
 
-// Asegura que el state tenga los campos mínimos (borradores viejos / nuevos)
 function normalizar(s) {
+  s = s || {};
   if (!s.desarrollos) s.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false, rrhh: false };
   if (s.desarrollos.rrhh === undefined) s.desarrollos.rrhh = false;
   if (!s.modulos) s.modulos = { api: "", app: "" };
@@ -33,83 +34,100 @@ function normalizar(s) {
   if (!s.api) s.api = { flujos: [] };
   if (!s.chatbot) s.chatbot = { tipoBot: "", plataformas: {}, menus: [] };
   if (!s.reporteria) s.reporteria = { reportes: [] };
+  if (!s.empresa) s.empresa = { tipoProductos: "", monedas: {}, otrasMonedas: "", impuestos: [] };
+  if (!s.ne) s.ne = { descripcion: "" };
+  if (s.cliente === undefined) s.cliente = "";
   return s;
 }
-function tituloDesarrollo() {
-  return `iCINE — ${(state.cliente || "sin nombre").trim()}`;
+function setStatus(t) { sesion.status = t; const el = document.getElementById("sesion-status"); if (el) el.textContent = t; }
+function datosComunes() {
+  return {
+    proyectoId: ctx.proyectoId, proyectoNombre: ctx.proyectoNombre,
+    jefeId: ctx.jefeId, desarrolladorId: ctx.usuario && ctx.usuario.id,
+    neTexto: sesion.neTexto, tipo: sesion.tipo, borrador: state
+  };
 }
-function setStatus(txt) { sesion.status = txt; const el = document.getElementById("sesion-status"); if (el) el.textContent = txt; }
-
 async function refrescarLista() {
-  if (!sesion.proyectoId) { sesion.lista = []; return; }
-  const r = await listarDesarrollos(sesion.proyectoId);
+  if (!ctx.proyectoId) { sesion.lista = []; return; }
+  const r = await listarDesarrollos(ctx.proyectoId);
   sesion.lista = (r && r.ok) ? r.items : [];
 }
-
-async function guardar() {
-  if (!sesion.proyectoId) { setStatus("Falta el ID del proyecto."); return; }
-  setStatus("Guardando…");
-  const comun = { proyectoId: sesion.proyectoId, tipo: sesion.tipo, borrador: state, responsableId: sesion.usuario && sesion.usuario.id, nombre: tituloDesarrollo() };
-  let r;
-  if (!sesion.elementId) {
-    r = await crearDesarrollo(comun);
-    if (r && r.ok) { sesion.elementId = r.elementId; setStatus(`Creado #${r.elementId} ✓`); await refrescarLista(); render(); return; }
-  } else {
-    r = await guardarDesarrollo({ elementId: sesion.elementId, ...comun });
-    if (r && r.ok) { setStatus("Guardado ✓"); return; }
-  }
-  setStatus("Error: " + ((r && r.mensaje) || "no se pudo guardar"));
+async function crear(neTexto, tipo) {
+  if (!ctx.proyectoId) { setStatus("No se detectó el proyecto."); return; }
+  sesion.neTexto = neTexto; sesion.tipo = tipo || "icine";
+  state = normalizar(resetState());
+  setStatus("Creando…");
+  const r = await crearDesarrollo(datosComunes());
+  if (r && r.ok) { sesion.elementId = r.elementId; vista = "form"; currentStep = 0; setStatus("Creado #" + r.elementId); render(); }
+  else setStatus("Error: " + ((r && r.mensaje) || "no se pudo crear"));
 }
-
 async function continuar(elementId) {
-  if (!elementId) return;
   setStatus("Cargando…");
   const r = await cargarDesarrollo(elementId);
   if (r && r.ok) {
     state = normalizar(r.borrador || {});
-    sesion.elementId = r.elementId;
-    sesion.tipo = r.tipo || "icine";
-    currentStep = 0;
-    setStatus(`Continuando #${r.elementId}`);
-    render();
-  } else { setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar")); }
+    sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
+    vista = "form"; currentStep = 0; setStatus("Editando #" + r.elementId); render();
+  } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
 }
-
-function nuevo() {
-  state = normalizar(resetState());
-  sesion.elementId = null;
-  currentStep = 0;
-  setStatus("Nuevo iCINE (sin guardar)");
-  render();
+async function guardar() {
+  if (!sesion.elementId) return;
+  setStatus("Guardando…");
+  const r = await guardarDesarrollo({ elementId: sesion.elementId, ...datosComunes() });
+  setStatus(r && r.ok ? "Guardado ✓" : "Error: " + ((r && r.mensaje) || "no se pudo"));
 }
+function volverInicio() { vista = "inicio"; sesion.elementId = null; refrescarLista().then(render); }
+function onChange(result = {}) { if (result.reset) { volverInicio(); return; } if (result.rerender) render(); }
 
-function onChange(result = {}) {
-  if (result.reset) { nuevo(); return; }
-  if (result.rerender) render();
-}
-
-function barraSesion() {
-  const opciones = sesion.lista.map((d) => `<option value="${d.id}">${(d.nombre || "Sin nombre")} (#${d.id})</option>`).join("");
-  return `
-    <div class="sesion-bar">
-      <span class="sb-item"><i class="ti ti-folder"></i> Proyecto: <b>${sesion.proyectoId || "—"}</b></span>
-      ${!sesion.proyectoId ? '<input id="sb-proy" placeholder="ID proyecto" style="max-width:110px"><button class="sb-btn" data-sb="usarproy">Usar</button>' : ""}
-      <span class="sb-sep"></span>
-      <select id="sb-sel" ${sesion.lista.length ? "" : "disabled"}><option value="">${sesion.lista.length ? "Elegí un desarrollo…" : "No hay desarrollos"}</option>${opciones}</select>
-      <button class="sb-btn" data-sb="continuar">Continuar</button>
-      <button class="sb-btn" data-sb="nuevo"><i class="ti ti-plus"></i> Nuevo</button>
-      <span class="sb-sep"></span>
-      <button class="sb-btn primary" data-sb="guardar"><i class="ti ti-device-floppy"></i> Guardar</button>
-      <span id="sesion-status" class="sb-status">${sesion.status}${sesion.elementId ? "  ·  Registro #" + sesion.elementId : ""}</span>
+/* ---------------- PANTALLA DE INICIO ---------------- */
+function renderInicio() {
+  if (cargando) return `<div class="card"><p>Cargando…</p></div>`;
+  if (!ctx.proyectoId) {
+    return `<div class="card">
+      <p class="step-title">No se detectó el proyecto</p>
+      <p class="step-helper">Esta aplicación debe abrirse <b>dentro de un proyecto de Bitrix24</b> (registrada como aplicación, no como iframe suelto). Si estás probando fuera de Bitrix, agregá <code>?proyecto=ID</code> a la URL.</p>
     </div>`;
+  }
+  const filas = sesion.lista.length
+    ? sesion.lista.map((d) => `
+        <div class="ini-row">
+          <div><b>${escapeHtml(d.neTexto || d.nombre || "Sin nombre")}</b> <span style="color:#888">#${d.id}</span></div>
+          <button class="sb-btn primary" data-continuar="${d.id}">Continuar</button>
+        </div>`).join("")
+    : `<p style="color:#888">No hay desarrollos en curso para este proyecto.</p>`;
+  return `<div class="card">
+    <p class="step-title">Desarrollos del proyecto</p>
+    <p class="step-helper">Proyecto: <b>${escapeHtml(ctx.proyectoNombre || "")}</b> (#${ctx.proyectoId})</p>
+    <div class="ini-lista">${filas}</div>
+    <hr style="margin:18px 0;border:none;border-top:1px solid #eee">
+    <p class="field-label">Crear un nuevo desarrollo</p>
+    <input type="text" data-ne-texto placeholder="Nombre de las NE (ej. Proceso comercial - chatbot - reportes)">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <select data-tipo><option value="icine">iCINE</option><option value="t24">T24</option></select>
+      <button class="sb-btn primary" data-crear><i class="ti ti-plus"></i> Crear</button>
+    </div>
+  </div>`;
 }
 
+/* ---------------- RENDER GENERAL ---------------- */
 function render() {
   const app = document.getElementById("app");
+
+  if (vista === "inicio") {
+    app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
+    const cr = app.querySelector("[data-crear]");
+    if (cr) cr.addEventListener("click", () => {
+      const t = app.querySelector("[data-ne-texto]"); const tp = app.querySelector("[data-tipo]");
+      crear((t && t.value.trim()) || "Desarrollo", tp && tp.value);
+    });
+    app.querySelectorAll("[data-continuar]").forEach((el) => el.addEventListener("click", () => continuar(el.getAttribute("data-continuar"))));
+    return;
+  }
+
+  // vista === "form"
   const pasos = getPasos(state);
   if (currentStep > pasos.length - 1) currentStep = pasos.length - 1;
   const stepKey = pasos[currentStep].key;
-
   let bodyHtml = "";
   if (stepKey === "ne") bodyHtml = renderNEStep(state);
   else if (stepKey === "seleccion") bodyHtml = renderSeleccionStep(state);
@@ -120,33 +138,28 @@ function render() {
   else if (stepKey === "rrhh") bodyHtml = renderRRHHStep(state);
   else if (stepKey === "api") bodyHtml = renderAPIStep(state);
   else if (stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
-  else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, devMode);
+  else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, false);
 
-  app.innerHTML = `
-    ${renderHeader()}
-    ${barraSesion()}
+  const barra = `<div class="sesion-bar">
+    <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> Inicio</button>
+    <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>
+    <button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>
+    <span id="sesion-status" class="sb-status">${sesion.status}</span>
+  </div>`;
+
+  app.innerHTML = `${renderHeader()}${barra}
     <div class="stepper">${renderStepper(currentStep, pasos)}</div>
     <div class="card">${bodyHtml}</div>
     <div class="nav-row">
       <button class="nav-btn" data-nav="prev" ${currentStep === 0 ? "disabled" : ""}>Anterior</button>
       ${stepKey === "confirmacion" ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
-    </div>
-    ${renderFooter()}`;
+    </div>${renderFooter()}`;
 
-  // Barra de sesión
-  app.querySelectorAll("[data-sb]").forEach((el) => el.addEventListener("click", () => {
-    const acc = el.getAttribute("data-sb");
-    if (acc === "guardar") guardar();
-    else if (acc === "nuevo") nuevo();
-    else if (acc === "continuar") { const sel = document.getElementById("sb-sel"); continuar(sel && sel.value); }
-    else if (acc === "usarproy") { const i = document.getElementById("sb-proy"); if (i && i.value) { sesion.proyectoId = i.value.trim(); refrescarLista().then(render); } }
-  }));
-
+  app.querySelector("[data-volver]").addEventListener("click", volverInicio);
+  app.querySelector("[data-guardar]").addEventListener("click", guardar);
   attachStepperListeners(app, (i) => { currentStep = i; render(); });
-  const prevBtn = app.querySelector('[data-nav="prev"]');
-  if (prevBtn) prevBtn.addEventListener("click", () => { currentStep = Math.max(0, currentStep - 1); render(); });
-  const nextBtn = app.querySelector('[data-nav="next"]');
-  if (nextBtn) nextBtn.addEventListener("click", () => { currentStep = Math.min(getPasos(state).length - 1, currentStep + 1); render(); });
+  const prev = app.querySelector('[data-nav="prev"]'); if (prev) prev.addEventListener("click", () => { currentStep = Math.max(0, currentStep - 1); render(); });
+  const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { currentStep = Math.min(getPasos(state).length - 1, currentStep + 1); render(); });
 
   const card = app.querySelector(".card");
   if (stepKey === "ne") attachNEListeners(card, state, onChange);
@@ -162,13 +175,15 @@ function render() {
 }
 
 async function init() {
-  render(); // pinta ya, aunque el contexto tarde
+  render();
   await initBitrix();
-  const ctx = await obtenerContextoBX();
-  sesion.proyectoId = ctx.proyectoId;
-  sesion.usuario = ctx.usuario;
+  const c = await obtenerContextoBX();
+  ctx.proyectoId = c.proyectoId || devProy || null;
+  ctx.proyectoNombre = c.proyectoNombre || (devProy ? "Proyecto de prueba" : "");
+  ctx.jefeId = c.jefeId || "";
+  ctx.usuario = c.usuario || null;
   await refrescarLista();
-  setStatus(enBitrix() ? "" : "Fuera de Bitrix (modo prueba)");
+  cargando = false;
   render();
 }
 init();

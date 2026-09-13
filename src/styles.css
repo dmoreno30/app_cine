@@ -184,3 +184,7 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .sb-btn.primary { background:#056AA1; color:#fff; border-color:#056AA1; }
 .sb-btn:hover { filter:brightness(0.97); }
 .sb-status { margin-left:auto; color:#056AA1; font-weight:600; }
+
+/* ===== Pantalla de inicio (desarrollos) ===== */
+.ini-lista { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
+.ini-row { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid #e6e6e6; border-radius:8px; padding:10px 12px; }
