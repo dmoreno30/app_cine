@@ -50,7 +50,12 @@ export function defaultState() {
       tipoProductos: "",
       monedas: Object.fromEntries(MONEDAS.map((m) => [m.key, false])),
       otrasMonedas: "",
-      impuestos: []
+      usaImpuestos: false,
+      paisImpuestos: "",
+      impuestos: [],
+      unidadesMedida: "",
+      direccion: "",
+      cantidadEmpleados: ""
     },
     // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
     // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
@@ -276,9 +281,14 @@ export function buildCanonicalJSON(state) {
       tipoProductos: state.empresa.tipoProductos.trim(),
       monedas: Object.keys(state.empresa.monedas).filter((k) => state.empresa.monedas[k]),
       otrasMonedas: state.empresa.otrasMonedas.trim(),
-      impuestos: state.empresa.impuestos
+      usaImpuestos: !!state.empresa.usaImpuestos,
+      paisImpuestos: (state.empresa.paisImpuestos || "").trim(),
+      impuestos: state.empresa.usaImpuestos ? state.empresa.impuestos
         .filter((t) => (t.nombre || "").trim())
-        .map((t) => ({ nombre: t.nombre.trim(), porcentaje: String(t.porcentaje == null ? "" : t.porcentaje).trim() }))
+        .map((t) => ({ nombre: t.nombre.trim(), porcentaje: String(t.porcentaje == null ? "" : t.porcentaje).trim() })) : [],
+      unidadesMedida: (state.empresa.unidadesMedida || "").trim(),
+      direccion: (state.empresa.direccion || "").trim(),
+      cantidadEmpleados: String(state.empresa.cantidadEmpleados == null ? "" : state.empresa.cantidadEmpleados).trim()
     },
     // Desarrollos seleccionados (paquete proceso + módulos sueltos).
     desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),

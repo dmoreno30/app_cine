@@ -1,4 +1,4 @@
-import { loadState, resetState } from "./state.js";
+import { defaultState, resetState } from "./state.js";
 import { getPasos, renderStepper, attachStepperListeners } from "./components/stepper.js";
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
@@ -26,18 +26,36 @@ const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", usuario: null };
 const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "" };
 
 function normalizar(s) {
+  const base = defaultState();
   s = s || {};
-  if (!s.desarrollos) s.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false, rrhh: false };
-  if (s.desarrollos.rrhh === undefined) s.desarrollos.rrhh = false;
-  if (!s.modulos) s.modulos = { api: "", app: "" };
-  if (!s.rrhh) s.rrhh = { procesos: [] };
-  if (!s.api) s.api = { flujos: [] };
-  if (!s.chatbot) s.chatbot = { tipoBot: "", plataformas: {}, menus: [] };
-  if (!s.reporteria) s.reporteria = { reportes: [] };
-  if (!s.empresa) s.empresa = { tipoProductos: "", monedas: {}, otrasMonedas: "", impuestos: [] };
-  if (!s.ne) s.ne = { descripcion: "" };
-  if (s.cliente === undefined) s.cliente = "";
-  return s;
+  const emp = s.empresa || {};
+  const cap = s.captacion || {};
+  return {
+    ...base, ...s,
+    ne: { ...base.ne, ...(s.ne || {}) },
+    empresa: {
+      ...base.empresa, ...emp,
+      monedas: { ...base.empresa.monedas, ...(emp.monedas || {}) },
+      impuestos: Array.isArray(emp.impuestos) ? emp.impuestos : base.empresa.impuestos
+    },
+    desarrollos: { ...base.desarrollos, ...(s.desarrollos || {}) },
+    modulos: { ...base.modulos, ...(s.modulos || {}) },
+    chatbot: {
+      ...base.chatbot, ...(s.chatbot || {}),
+      plataformas: { ...(base.chatbot.plataformas || {}), ...((s.chatbot || {}).plataformas || {}) },
+      menus: Array.isArray((s.chatbot || {}).menus) ? s.chatbot.menus : base.chatbot.menus
+    },
+    rrhh: { procesos: Array.isArray((s.rrhh || {}).procesos) ? s.rrhh.procesos : base.rrhh.procesos },
+    api: { ...base.api, ...(s.api || {}), flujos: Array.isArray((s.api || {}).flujos) ? s.api.flujos : base.api.flujos },
+    captacion: {
+      ...base.captacion, ...cap,
+      canales: { ...base.captacion.canales, ...(cap.canales || {}) },
+      chatbot: { ...base.captacion.chatbot, ...(cap.chatbot || {}) }
+    },
+    entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },
+    entidades: { ...base.entidades, ...(s.entidades || {}) },
+    reporteria: { reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes }
+  };
 }
 function setStatus(t) { sesion.status = t; const el = document.getElementById("sesion-status"); if (el) el.textContent = t; }
 function datosComunes() {
