@@ -1,4 +1,4 @@
-import { ENTIDADES, ORDEN_ENTIDADES } from "../data/config.js";
+import { ENTIDADES, ORDEN_ENTIDADES, PERMISOS_CRM } from "../data/config.js";
 import { renderEntityMap, attachEntityMapListeners } from "../components/entityMap.js";
 import { renderStageList, attachStageListeners } from "../components/stageList.js";
 import { renderFieldList, attachFieldListeners } from "../components/fieldList.js";
@@ -21,6 +21,7 @@ export function renderProcesoComercialStep(state) {
     activeEntityTab = habilitadas[0] || null;
   }
 
+  const rolesHtml = renderRolesCRM(state);
   const mapHtml = renderEntityMap(state, expandedKey);
 
   const subtabsHtml = habilitadas.map((key) => {
@@ -34,6 +35,7 @@ export function renderProcesoComercialStep(state) {
   const formHtml = activeEntityTab ? renderEntityForm(state, activeEntityTab) : `<p class="step-helper">No hay entidades habilitadas todavía. Activá al menos una en el mapa de arriba.</p>`;
 
   return `
+    ${rolesHtml}
     ${mapHtml}
     <div class="subtabs">${subtabsHtml}</div>
     <div id="entity-form-container">${formHtml}</div>`;
@@ -60,14 +62,14 @@ function renderEntityForm(state, key) {
     html += renderStageList(key, "etapasFallo", "Etapas de descarte (éxito ya es fija)", data.etapasFallo);
   }
 
+  if (cfg.type === "pipeline") {
+    html += renderPasoAPaso(key, data.flujoPasos || []);
+  }
+
   html += renderFieldList(key, data.camposPersonalizados);
 
   if (cfg.type === "pipeline") {
-    html += `
-      <div class="field-block">
-        <label class="field-label">¿Alguna automatización?</label>
-        <textarea data-entity-text="${key}" data-entity-prop="automatizacion" rows="2" placeholder="Describe qué debería pasar automáticamente, por ejemplo al cambiar de etapa">${escapeHtml(data.automatizacion)}</textarea>
-      </div>`;
+    html += renderAutomatizaciones(key, data.automatizaciones || []);
   }
 
   if (key === "cotizaciones") html += renderOrigenExternoCotizaciones(data.origenExterno);
@@ -123,6 +125,70 @@ function renderPostventaForm(data) {
     <div class="field-block">
       <label class="field-label">Describí el proceso de post-venta en general</label>
       <textarea data-postventa-text="procesoDescripcion" rows="3" placeholder="Ej. Después de ganar, se agenda instalación, se hace seguimiento de garantía por 6 meses...">${escapeHtml(data.procesoDescripcion)}</textarea>
+    </div>`;
+}
+
+
+function renderPasoAPaso(key, pasos) {
+  const rows = pasos.map((p, i) => `
+    <div class="paso-item">
+      <div class="paso-num">${i + 1}</div>
+      <div class="paso-campos">
+        <textarea data-paso="${key}" data-paso-idx="${i}" data-paso-prop="accion" rows="2" placeholder="Acción / Descripción">${escapeHtml(p.accion || "")}</textarea>
+        <div class="row-flex">
+          <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="responsable" value="${escapeAttr(p.responsable || "")}" placeholder="Responsable">
+          <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="herramienta" value="${escapeAttr(p.herramienta || "")}" placeholder="Herramienta / Módulo">
+        </div>
+        <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="condicion" value="${escapeAttr(p.condicion || "")}" placeholder="Condición o Regla (opcional)">
+      </div>
+      <button class="icon-btn" data-paso-remove="${key}|${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
+  return `
+    <div class="field-block">
+      <label class="field-label">Paso a paso del proceso <span style="font-weight:400;color:var(--text-secondary)">— la explicación detallada en pasos</span></label>
+      ${rows}
+      <button class="add-btn" data-paso-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
+    </div>`;
+}
+
+function renderAutomatizaciones(key, autos) {
+  const rows = autos.map((a, i) => `
+    <div class="row-flex" style="align-items:flex-start">
+      <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder="Disparador (ej. Etapa X / Creación)" style="max-width:220px">
+      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace la automatización">${escapeHtml(a.valor || "")}</textarea>
+      <button class="icon-btn" data-auto-remove="${key}|${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
+  return `
+    <div class="field-block">
+      <label class="field-label">Automatizaciones <span style="font-weight:400;color:var(--text-secondary)">— disparador y qué hace</span></label>
+      ${rows}
+      <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar automatización</button>
+    </div>`;
+}
+
+export function renderRolesCRM(state) {
+  const roles = state.roles || [];
+  const rows = roles.map((r, i) => {
+    const chips = PERMISOS_CRM.map((perm) => {
+      const on = (r.permisos || []).includes(perm);
+      return `<div class="canal-chip ${on ? "on" : ""}" data-rol-perm="${i}|${perm}">${perm}</div>`;
+    }).join("");
+    return `
+      <div class="rep-card">
+        <div class="rep-head">
+          <input type="text" class="rep-nombre" data-rol-idx="${i}" data-rol-prop="rol" value="${escapeAttr(r.rol || "")}" placeholder="Nombre del rol (ej. Asesor Comercial)">
+          <button class="icon-btn" data-rol-remove="${i}"><i class="ti ti-trash"></i></button>
+        </div>
+        <div class="rep-field"><label>Permisos</label><div class="canal-grid">${chips}</div></div>
+        <div class="rep-field"><label>Observaciones</label>
+          <input type="text" data-rol-idx="${i}" data-rol-prop="observaciones" value="${escapeAttr(r.observaciones || "")}" placeholder="Para quién es este rol / notas"></div>
+      </div>`;
+  }).join("");
+  return `
+    <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;margin-bottom:16px;background:#fafafa">
+      <p class="field-label" style="font-size:15px"><i class="ti ti-users"></i> Roles y permisos en el CRM</p>
+      ${rows}
+      <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>
     </div>`;
 }
 
@@ -184,4 +250,53 @@ export function attachProcesoComercialListeners(container, state, onChange) {
 
   attachStageListeners(container, state, onChange);
   attachFieldListeners(container, state, onChange);
+
+  // Paso a paso
+  container.querySelectorAll("[data-paso-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    const key = el.getAttribute("data-paso"); const i = parseInt(el.getAttribute("data-paso-idx"), 10);
+    state.entidades[key].flujoPasos[i][el.getAttribute("data-paso-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  container.querySelectorAll("[data-paso-add]").forEach((el) => el.addEventListener("click", () => {
+    const key = el.getAttribute("data-paso-add");
+    (state.entidades[key].flujoPasos = state.entidades[key].flujoPasos || []).push({ accion: "", responsable: "", herramienta: "", condicion: "" });
+    onChange({ rerender: true });
+  }));
+  container.querySelectorAll("[data-paso-remove]").forEach((el) => el.addEventListener("click", () => {
+    const [key, i] = el.getAttribute("data-paso-remove").split("|");
+    state.entidades[key].flujoPasos.splice(parseInt(i, 10), 1); onChange({ rerender: true });
+  }));
+
+  // Automatizaciones (tabla)
+  container.querySelectorAll("[data-auto-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    const key = el.getAttribute("data-auto"); const i = parseInt(el.getAttribute("data-auto-idx"), 10);
+    state.entidades[key].automatizaciones[i][el.getAttribute("data-auto-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  container.querySelectorAll("[data-auto-add]").forEach((el) => el.addEventListener("click", () => {
+    const key = el.getAttribute("data-auto-add");
+    (state.entidades[key].automatizaciones = state.entidades[key].automatizaciones || []).push({ parametro: "", valor: "" });
+    onChange({ rerender: true });
+  }));
+  container.querySelectorAll("[data-auto-remove]").forEach((el) => el.addEventListener("click", () => {
+    const [key, i] = el.getAttribute("data-auto-remove").split("|");
+    state.entidades[key].automatizaciones.splice(parseInt(i, 10), 1); onChange({ rerender: true });
+  }));
+
+  // Roles y permisos
+  if (!Array.isArray(state.roles)) state.roles = [];
+  container.querySelectorAll("[data-rol-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    state.roles[parseInt(el.getAttribute("data-rol-idx"), 10)][el.getAttribute("data-rol-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  container.querySelectorAll("[data-rol-perm]").forEach((el) => el.addEventListener("click", () => {
+    const [i, perm] = el.getAttribute("data-rol-perm").split("|"); const r = state.roles[parseInt(i, 10)];
+    r.permisos = r.permisos || [];
+    const idx = r.permisos.indexOf(perm);
+    if (idx >= 0) r.permisos.splice(idx, 1); else r.permisos.push(perm);
+    onChange({ rerender: true });
+  }));
+  container.querySelectorAll("[data-rol-add]").forEach((el) => el.addEventListener("click", () => {
+    state.roles.push({ rol: "", permisos: [], observaciones: "" }); onChange({ rerender: true });
+  }));
+  container.querySelectorAll("[data-rol-remove]").forEach((el) => el.addEventListener("click", () => {
+    state.roles.splice(parseInt(el.getAttribute("data-rol-remove"), 10), 1); onChange({ rerender: true });
+  }));
 }

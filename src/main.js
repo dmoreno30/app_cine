@@ -30,7 +30,7 @@ function normalizar(s) {
   s = s || {};
   const emp = s.empresa || {};
   const cap = s.captacion || {};
-  return {
+  const out = {
     ...base, ...s,
     ne: { ...base.ne, ...(s.ne || {}) },
     empresa: {
@@ -54,8 +54,21 @@ function normalizar(s) {
     },
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },
     entidades: { ...base.entidades, ...(s.entidades || {}) },
-    reporteria: { reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes }
+    reporteria: { reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes },
+    roles: Array.isArray(s.roles) && s.roles.length ? s.roles : base.roles
   };
+  // Migración de entidades pipeline (borradores viejos → estructura nueva)
+  const toStage = (x) => (typeof x === "string" ? { nombre: x, descripcion: "" } : { nombre: (x && (x.nombre || x.etapa)) || "", descripcion: (x && (x.descripcion || x.desc)) || "" });
+  Object.values(out.entidades || {}).forEach((e) => {
+    if (!e || typeof e !== "object") return;
+    if (Array.isArray(e.etapasProgreso)) e.etapasProgreso = e.etapasProgreso.map(toStage);
+    if (Array.isArray(e.etapasFallo)) e.etapasFallo = e.etapasFallo.map(toStage);
+    if (!Array.isArray(e.flujoPasos)) e.flujoPasos = [{ accion: "", responsable: "", herramienta: "", condicion: "" }];
+    if (!Array.isArray(e.automatizaciones)) {
+      e.automatizaciones = e.automatizacion ? [{ parametro: "", valor: e.automatizacion }] : [{ parametro: "", valor: "" }];
+    }
+  });
+  return out;
 }
 function setStatus(t) { sesion.status = t; const el = document.getElementById("sesion-status"); if (el) el.textContent = t; }
 function datosComunes() {

@@ -5,12 +5,17 @@ const STORAGE_KEY = "icine_captura_draft_v2";
 
 function defaultPipelineEntity() {
   return {
-    etapasProgreso: [""],
-    etapasFallo: [""],
+    flujo: "",
+    etapasProgreso: [{ nombre: "", descripcion: "" }],
+    etapasFallo: [{ nombre: "", descripcion: "" }],
+    flujoPasos: [{ accion: "", responsable: "", herramienta: "", condicion: "" }],
     camposPersonalizados: [{ nombre: "", tipo: "Texto" }],
-    automatizacion: "",
-    flujo: ""
+    automatizaciones: [{ parametro: "", valor: "" }]
   };
+}
+function toStage(x) {
+  if (typeof x === "string") return { nombre: x, descripcion: "" };
+  return { nombre: x.nombre || x.etapa || "", descripcion: x.descripcion || x.desc || "" };
 }
 function defaultSimpleEntity() {
   return { camposPersonalizados: [{ nombre: "", tipo: "Texto" }] };
@@ -101,7 +106,9 @@ export function defaultState() {
     entidades,
     reporteria: {
       reportes: []   // [{ nombre, queMuestra, entidad, filtros, tipoVisualizacion, consideraciones }]
-    }
+    },
+    // Roles y permisos del CRM (tabla 2.4 del iCINE)
+    roles: [{ rol: "", permisos: [], observaciones: "" }]
   };
 }
 
@@ -181,29 +188,11 @@ export function resetState() {
   return defaultState();
 }
 
-function cleanStages(arr) { return arr.map((s) => s.trim()).filter(Boolean); }
-function cleanFields(arr) { return arr.filter((f) => f.nombre.trim()).map((f) => ({ nombre: f.nombre.trim(), tipo: f.tipo })); }
-
-function buildAPI(a) {
-  a = a || {};
-  return {
-    otroSoftware: (a.otroSoftware || "").trim(),
-    dirBitrixHaciaOtro: !!a.dirBitrixHaciaOtro,
-    dirOtroHaciaBitrix: !!a.dirOtroHaciaBitrix,
-    webService: !!a.webService,
-    webServiceNota: (a.webServiceNota || "").trim(),
-    flujos: (a.flujos || [])
-      .filter((f) => (f.objeto || "").trim() || (f.descripcion || "").trim())
-      .map((f) => ({
-        objeto: (f.objeto || "").trim(),
-        direccion: f.direccion || "",
-        descripcion: (f.descripcion || "").trim(),
-        mapeaId: !!f.mapeaId,
-        consideraciones: (f.consideraciones || "").trim()
-      })),
-    sincronizaProductos: !!a.sincronizaProductos,
-    codigoProductos: (a.codigoProductos || "").trim()
-  };
+function cleanStages(arr) {
+  return (arr || [])
+    .map(toStage)
+    .filter((e) => (e.nombre || "").trim())
+    .map((e) => ({ nombre: e.nombre.trim(), descripcion: (e.descripcion || "").trim() }));
 }
 
 function buildRRHH(rr) {
@@ -310,8 +299,12 @@ export function buildCanonicalJSON(state) {
         descripcion: state.captacion.chatbot.descripcion.trim()
       }
     },
-    procesoComercial: { entidades: {} }
+    procesoComercial: { entidades: {}, roles: [] }
   };
+
+  out.procesoComercial.roles = (state.roles || [])
+    .filter((r) => (r.rol || "").trim())
+    .map((r) => ({ rol: r.rol.trim(), permisos: (r.permisos || []).slice(), observaciones: (r.observaciones || "").trim() }));
 
   Object.keys(ENTIDADES).forEach((key) => {
     if (!state.entidadesHabilitadas[key]) return;
@@ -319,11 +312,16 @@ export function buildCanonicalJSON(state) {
     const data = state.entidades[key];
     if (cfg.type === "pipeline") {
       const entry = {
-        flujo: data.flujo.trim(),
+        flujo: (data.flujo || "").trim(),
         etapasProgreso: cleanStages(data.etapasProgreso),
         etapasFallo: cleanStages(data.etapasFallo),
+        flujoPasos: (data.flujoPasos || [])
+          .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
+          .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() })),
         camposPersonalizados: cleanFields(data.camposPersonalizados),
-        automatizacion: data.automatizacion.trim()
+        automatizaciones: (data.automatizaciones || [])
+          .filter((a) => (a.parametro || "").trim() || (a.valor || "").trim())
+          .map((a) => ({ parametro: (a.parametro || "").trim(), valor: (a.valor || "").trim() }))
       };
       if (key === "cotizaciones" && data.origenExterno) {
         entry.origenExterno = {

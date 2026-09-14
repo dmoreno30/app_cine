@@ -188,3 +188,10 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 /* ===== Pantalla de inicio (desarrollos) ===== */
 .ini-lista { display:flex; flex-direction:column; gap:8px; margin-top:8px; }
 .ini-row { display:flex; align-items:center; justify-content:space-between; gap:12px; border:1px solid #e6e6e6; border-radius:8px; padding:10px 12px; }
+
+/* ===== Proceso comercial: etapas con descripción, paso a paso ===== */
+.stage-item { border:1px solid #eee; border-radius:8px; padding:8px; margin-bottom:8px; background:#fff; }
+.stage-item textarea { margin-top:6px; }
+.paso-item { display:flex; gap:8px; align-items:flex-start; border:1px solid #eee; border-radius:8px; padding:8px; margin-bottom:8px; background:#fff; }
+.paso-num { flex:0 0 auto; width:24px; height:24px; border-radius:50%; background:#056AA1; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:4px; }
+.paso-campos { flex:1; display:flex; flex-direction:column; gap:6px; }

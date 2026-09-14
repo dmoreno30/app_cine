@@ -94,7 +94,11 @@ export function attachNEListeners(container, state, onChange) {
   }));
 
   const usa = container.querySelector("[data-empresa-usaimp]");
-  if (usa) usa.addEventListener("change", (e) => { emp.usaImpuestos = e.target.checked; onChange({ rerender: true }); });
+  if (usa) usa.addEventListener("change", (e) => {
+    emp.usaImpuestos = e.target.checked;
+    if (emp.usaImpuestos && (!emp.impuestos || emp.impuestos.length === 0)) emp.impuestos = [{ nombre: "", porcentaje: "" }];
+    onChange({ rerender: true });
+  });
 
   container.querySelectorAll("[data-imp-idx]").forEach((el) => el.addEventListener("input", (e) => {
     const i = parseInt(el.getAttribute("data-imp-idx"), 10); emp.impuestos[i][el.getAttribute("data-imp-prop")] = e.target.value; onChange({ rerender: false });

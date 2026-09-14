@@ -1,13 +1,19 @@
-import { escapeAttr } from "../utils.js";
+import { escapeAttr, escapeHtml } from "../utils.js";
+
+function nombreDe(x) { return typeof x === "string" ? x : (x.nombre || ""); }
+function descDe(x) { return typeof x === "string" ? "" : (x.descripcion || ""); }
 
 export function renderStageList(entityKey, listKey, label, list) {
-  const rows = list.map((val, i) => `
-    <div class="row-flex">
-      <input type="text" data-stage-entity="${entityKey}" data-stage-list="${listKey}" data-stage-idx="${i}"
-             value="${escapeAttr(val)}" placeholder="Nombre de la etapa">
-      <button class="icon-btn" data-remove-stage="${entityKey}|${listKey}|${i}"><i class="ti ti-x"></i></button>
+  const rows = (list || []).map((val, i) => `
+    <div class="stage-item">
+      <div class="row-flex">
+        <input type="text" data-stage-entity="${entityKey}" data-stage-list="${listKey}" data-stage-idx="${i}" data-stage-prop="nombre"
+               value="${escapeAttr(nombreDe(val))}" placeholder="Nombre de la etapa">
+        <button class="icon-btn" data-remove-stage="${entityKey}|${listKey}|${i}"><i class="ti ti-x"></i></button>
+      </div>
+      <textarea data-stage-entity="${entityKey}" data-stage-list="${listKey}" data-stage-idx="${i}" data-stage-prop="descripcion"
+                rows="2" placeholder="Descripción: qué pasa en esta etapa">${escapeHtml(descDe(val))}</textarea>
     </div>`).join("");
-
   return `
     <div class="field-block">
       <label class="field-label">${label}</label>
@@ -17,19 +23,23 @@ export function renderStageList(entityKey, listKey, label, list) {
 }
 
 export function attachStageListeners(container, state, onChange) {
-  container.querySelectorAll("input[data-stage-entity]").forEach((el) => {
+  container.querySelectorAll("[data-stage-prop]").forEach((el) => {
     el.addEventListener("input", (e) => {
       const entity = el.getAttribute("data-stage-entity");
       const list = el.getAttribute("data-stage-list");
       const idx = parseInt(el.getAttribute("data-stage-idx"), 10);
-      state.entidades[entity][list][idx] = e.target.value;
+      const prop = el.getAttribute("data-stage-prop");
+      let item = state.entidades[entity][list][idx];
+      if (typeof item === "string") item = { nombre: item, descripcion: "" };
+      item[prop] = e.target.value;
+      state.entidades[entity][list][idx] = item;
       onChange({ rerender: false });
     });
   });
   container.querySelectorAll("[data-add-stage]").forEach((el) => {
     el.addEventListener("click", () => {
       const [entity, list] = el.getAttribute("data-add-stage").split("|");
-      state.entidades[entity][list].push("");
+      state.entidades[entity][list].push({ nombre: "", descripcion: "" });
       onChange({ rerender: true });
     });
   });
