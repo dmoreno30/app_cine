@@ -100,6 +100,7 @@ export function defaultState() {
     captacion: {
       canales, otros: "", distribucion: "",
       paginawebUrl: "", tiendavirtualUrl: "",
+      flujosPorCanal: {},   // { canalKey: [{ accion, responsable, herramienta, condicion }] }
       chatbot: { necesita: false, descripcion: "" }
     },
     entidadesHabilitadas,
@@ -144,6 +145,7 @@ export function loadState() {
         ...base.captacion,
         ...(parsed.captacion || {}),
         canales: { ...base.captacion.canales, ...((parsed.captacion || {}).canales || {}) },
+        flujosPorCanal: { ...base.captacion.flujosPorCanal, ...((parsed.captacion || {}).flujosPorCanal || {}) },
         chatbot: { ...base.captacion.chatbot, ...((parsed.captacion || {}).chatbot || {}) }
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
@@ -297,7 +299,14 @@ export function buildCanonicalJSON(state) {
       chatbot: {
         necesita: !!state.captacion.chatbot.necesita,
         descripcion: state.captacion.chatbot.descripcion.trim()
-      }
+      },
+      flujosPorCanal: Object.fromEntries(
+        Object.entries(state.captacion.flujosPorCanal || {})
+          .map(([k, pasos]) => [k, (pasos || [])
+            .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
+            .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() }))])
+          .filter(([, pasos]) => pasos.length)
+      )
     },
     procesoComercial: { entidades: {}, roles: [] }
   };
