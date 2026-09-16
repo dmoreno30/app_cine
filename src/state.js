@@ -190,11 +190,38 @@ export function resetState() {
   return defaultState();
 }
 
+function cleanFields(arr) {
+  return (arr || [])
+    .filter((f) => (f.nombre || f.campo || "").trim())
+    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto" }));
+}
 function cleanStages(arr) {
   return (arr || [])
     .map(toStage)
     .filter((e) => (e.nombre || "").trim())
     .map((e) => ({ nombre: e.nombre.trim(), descripcion: (e.descripcion || "").trim() }));
+}
+
+function buildAPI(a) {
+  a = a || {};
+  return {
+    otroSoftware: (a.otroSoftware || "").trim(),
+    dirBitrixHaciaOtro: !!a.dirBitrixHaciaOtro,
+    dirOtroHaciaBitrix: !!a.dirOtroHaciaBitrix,
+    webService: !!a.webService,
+    webServiceNota: (a.webServiceNota || "").trim(),
+    flujos: (a.flujos || [])
+      .filter((f) => (f.objeto || "").trim() || (f.descripcion || "").trim())
+      .map((f) => ({
+        objeto: (f.objeto || "").trim(),
+        direccion: f.direccion || "",
+        descripcion: (f.descripcion || "").trim(),
+        mapeaId: !!f.mapeaId,
+        consideraciones: (f.consideraciones || "").trim()
+      })),
+    sincronizaProductos: !!a.sincronizaProductos,
+    codigoProductos: (a.codigoProductos || "").trim()
+  };
 }
 
 function buildRRHH(rr) {
