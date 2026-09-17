@@ -64,7 +64,9 @@ export function defaultState() {
     },
     // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
     // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
-    desarrollos: { proceso: false, reportes: false, chatbot: false, api: false, app: false, rrhh: false },
+    desarrollos: { captacion: true, proceso: true, reportes: true, chatbot: false, api: false, app: false, rrhh: false },
+    // Consideraciones por NE (texto libre que se agrega al final de cada NE en el iCINE)
+    consideraciones: { captacion: "", proceso: "", reporteria: "", chatbot: "", api: "", app: "", rrhh: "" },
     // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
     modulos: { api: "", app: "" },
     // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
@@ -150,6 +152,7 @@ export function loadState() {
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
+      consideraciones: { ...base.consideraciones, ...(parsed.consideraciones || {}) },
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
       api: { ...base.api, ...(parsed.api || {}), flujos: Array.isArray((parsed.api || {}).flujos) ? parsed.api.flujos : base.api.flujos },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
@@ -310,6 +313,15 @@ export function buildCanonicalJSON(state) {
     },
     // Desarrollos seleccionados (paquete proceso + módulos sueltos).
     desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),
+    consideraciones: {
+      captacion: (state.consideraciones && state.consideraciones.captacion || "").trim(),
+      proceso: (state.consideraciones && state.consideraciones.proceso || "").trim(),
+      reporteria: (state.consideraciones && state.consideraciones.reporteria || "").trim(),
+      chatbot: (state.consideraciones && state.consideraciones.chatbot || "").trim(),
+      api: (state.consideraciones && state.consideraciones.api || "").trim(),
+      app: (state.consideraciones && state.consideraciones.app || "").trim(),
+      rrhh: (state.consideraciones && state.consideraciones.rrhh || "").trim()
+    },
     modulos: {
       api: (state.modulos.api || "").trim(),
       app: (state.modulos.app || "").trim()

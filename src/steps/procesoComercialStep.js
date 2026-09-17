@@ -28,7 +28,7 @@ export function renderProcesoComercialStep(state) {
     const cfg = ENTIDADES[key];
     return `<div class="subtab ${key === activeEntityTab ? "active" : ""}" data-entity-tab="${key}">
       <i class="ti ${cfg.icon}"></i>${cfg.label}
-      <span class="tag">${cfg.type === "pipeline" ? "pipeline" : cfg.type === "postventa" ? "proceso" : "campos"}</span>
+      <span class="tag">${cfg.type === "pipeline" ? "proceso" : cfg.type === "postventa" ? "proceso" : "campos"}</span>
     </div>`;
   }).join("");
 
@@ -47,7 +47,7 @@ function renderEntityForm(state, key) {
 
   if (cfg.type === "postventa") return renderPostventaForm(data);
 
-  let html = `<p class="step-title">${cfg.label}<span class="badge">${cfg.type === "pipeline" ? "pipeline" : "solo campos"}</span></p>`;
+  let html = `<p class="step-title">${cfg.label}<span class="badge">${cfg.type === "pipeline" ? "proceso" : "solo campos"}</span></p>`;
   html += `<p class="step-helper">${cfg.helper}</p>`;
 
   if (cfg.type === "pipeline") {
