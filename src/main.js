@@ -55,8 +55,14 @@ function normalizar(s) {
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },
     entidades: { ...base.entidades, ...(s.entidades || {}) },
     reporteria: { reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes },
-    roles: Array.isArray(s.roles) && s.roles.length ? s.roles : base.roles
+    roles: Array.isArray(s.roles) && s.roles.length ? s.roles : base.roles,
+    consideraciones: { ...base.consideraciones, ...(s.consideraciones || {}) }
   };
+  // Migración: borradores viejos donde "proceso" era el paquete completo.
+  if (s.desarrollos && s.desarrollos.proceso && s.desarrollos.captacion === undefined) {
+    out.desarrollos.captacion = true;
+    out.desarrollos.reportes = true;
+  }
   // Migración de entidades pipeline (borradores viejos → estructura nueva)
   const toStage = (x) => (typeof x === "string" ? { nombre: x, descripcion: "" } : { nombre: (x && (x.nombre || x.etapa)) || "", descripcion: (x && (x.descripcion || x.desc)) || "" });
   Object.values(out.entidades || {}).forEach((e) => {
@@ -171,6 +177,19 @@ function render() {
   else if (stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, false);
 
+  // Campo "Consideraciones" al final de cada NE (se agrega al iCINE al cerrar la NE)
+  const NE_CONS = { captacion: "captacion", proceso: "proceso", reporteria: "reporteria", chatbot: "chatbot", api: "api", app: "app", rrhh: "rrhh" };
+  if (NE_CONS[stepKey]) {
+    if (!state.consideraciones) state.consideraciones = {};
+    const val = escapeHtml(state.consideraciones[NE_CONS[stepKey]] || "");
+    bodyHtml += `
+      <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
+        <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
+        <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
+        <textarea data-consideraciones="${NE_CONS[stepKey]}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
+      </div>`;
+  }
+
   const barra = `<div class="sesion-bar">
     <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> Inicio</button>
     <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>
@@ -191,6 +210,14 @@ function render() {
   attachStepperListeners(app, (i) => { currentStep = i; render(); });
   const prev = app.querySelector('[data-nav="prev"]'); if (prev) prev.addEventListener("click", () => { currentStep = Math.max(0, currentStep - 1); render(); });
   const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { currentStep = Math.min(getPasos(state).length - 1, currentStep + 1); render(); });
+
+  // listener del campo Consideraciones (si está presente)
+  const cons = app.querySelector("[data-consideraciones]");
+  if (cons) cons.addEventListener("input", (e) => {
+    const k = cons.getAttribute("data-consideraciones");
+    if (!state.consideraciones) state.consideraciones = {};
+    state.consideraciones[k] = e.target.value;
+  });
 
   const card = app.querySelector(".card");
   if (stepKey === "ne") attachNEListeners(card, state, onChange);

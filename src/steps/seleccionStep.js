@@ -1,54 +1,68 @@
-// Pantalla "Selección de desarrollos": el checklist que enciende/apaga pestañas.
-// Arranca vacío. "Proceso Comercial" es un paquete (Captación + Proceso + Reportería).
-// "Reportes" suelto se desactiva si el paquete está activo (de-duplicación).
+// "Selección de desarrollos". Proceso Comercial es un grupo con 3 sub-opciones
+// independientes (Captación / Proceso / Reportes). Chatbot aparte.
+// RRHH, API y Aplicación quedan como "Próximamente" (deshabilitados).
 
-const DESARROLLOS = [
-  { key: "proceso", icon: "ti-route", label: "Proceso Comercial", desc: "Paquete: Captación + Proceso Comercial + Reportería", paquete: ["Captación", "Proceso Comercial", "Reportería"] },
-  { key: "reportes", icon: "ti-chart-bar", label: "Reportes", desc: "Solo tableros e indicadores de gestión", paquete: [] },
-  { key: "chatbot", icon: "ti-message-chatbot", label: "Chatbot", desc: "Flujo del bot sobre una plataforma vinculada a Bitrix24", paquete: [] },
-  { key: "api", icon: "ti-plug-connected", label: "Creación de API", desc: "Integración con terceros", paquete: [] },
-  { key: "app", icon: "ti-app-window", label: "Creación de aplicación", desc: "Desarrollo de una app a medida", paquete: [] },
-  { key: "rrhh", icon: "ti-users-group", label: "Procesos de gestión de RRHH", desc: "Vacaciones, permisos, adelantos, contratación, despidos…", paquete: [] }
+const SUB_PROCESO = [
+  { key: "captacion", icon: "ti-antenna", label: "Captación de clientes", desc: "Canales y omnicanalidad" },
+  { key: "proceso", icon: "ti-route", label: "Proceso Comercial", desc: "Prospectos, negociaciones, cotizaciones…" },
+  { key: "reportes", icon: "ti-chart-bar", label: "Reportes", desc: "Tableros e indicadores de gestión" }
+];
+const OTROS = [
+  { key: "chatbot", icon: "ti-message-chatbot", label: "Chatbot", desc: "Flujo del bot sobre plataforma vinculada a Bitrix24" }
+];
+const PROXIMAMENTE = [
+  { key: "rrhh", icon: "ti-users-group", label: "Procesos de gestión de RRHH" },
+  { key: "api", icon: "ti-plug-connected", label: "Creación de API / Integración" },
+  { key: "app", icon: "ti-app-window", label: "Creación de aplicación" }
 ];
 
 function ensureDesarrollos(state) {
-  if (!state.desarrollos) state.desarrollos = { proceso: false, reportes: false, chatbot: false, api: false, app: false };
-  return state.desarrollos;
+  if (!state.desarrollos) state.desarrollos = {};
+  const d = state.desarrollos;
+  ["captacion", "proceso", "reportes", "chatbot", "api", "app", "rrhh"].forEach((k) => { if (d[k] === undefined) d[k] = false; });
+  return d;
 }
-function reportesBloqueado(state) { return !!ensureDesarrollos(state).proceso; }
+
+function card(m, on) {
+  return `
+    <div class="sel-card ${on ? "on" : ""}" data-toggle-des="${m.key}">
+      <div class="sel-check">${on ? '<i class="ti ti-check"></i>' : ""}</div>
+      <div class="sel-body">
+        <div class="sel-title"><i class="ti ${m.icon}"></i> ${m.label}</div>
+        <div class="sel-desc">${m.desc}</div>
+      </div>
+    </div>`;
+}
+function cardProx(m) {
+  return `
+    <div class="sel-card locked" style="opacity:.6">
+      <div class="sel-check"></div>
+      <div class="sel-body">
+        <div class="sel-title"><i class="ti ${m.icon}"></i> ${m.label}</div>
+        <div class="sel-lock"><i class="ti ti-clock"></i> Próximamente</div>
+      </div>
+    </div>`;
+}
 
 export function renderSeleccionStep(state) {
-  ensureDesarrollos(state);
-  const cards = DESARROLLOS.map((m) => {
-    const locked = m.key === "reportes" && reportesBloqueado(state);
-    const on = state.desarrollos[m.key] && !locked;
-    const badges = m.paquete.length
-      ? `<div class="sel-badges">${m.paquete.map((p) => `<span class="sel-badge">${p}</span>`).join("")}</div>`
-      : "";
-    const lockNote = locked
-      ? `<div class="sel-lock"><i class="ti ti-lock"></i> incluido en Proceso Comercial</div>`
-      : "";
-    return `
-      <div class="sel-card ${on ? "on" : ""} ${locked ? "locked" : ""}" ${locked ? "" : `data-toggle-des="${m.key}"`}>
-        <div class="sel-check">${on ? '<i class="ti ti-check"></i>' : ""}</div>
-        <div class="sel-body">
-          <div class="sel-title"><i class="ti ${m.icon}"></i> ${m.label}</div>
-          <div class="sel-desc">${m.desc}</div>
-          ${badges}${lockNote}
-        </div>
-      </div>`;
-  }).join("");
-
-  const dedup = (state.desarrollos.reportes && reportesBloqueado(state))
-    ? `<div class="sel-dedup"><i class="ti ti-info-circle"></i> Reportes ya viene dentro del paquete <b>Proceso Comercial</b>. Para no duplicar, la pestaña de Reportes suelta se desactiva sola.</div>`
-    : "";
+  const d = ensureDesarrollos(state);
+  const grupoProc = SUB_PROCESO.map((m) => card(m, d[m.key])).join("");
+  const otros = OTROS.map((m) => card(m, d[m.key])).join("");
+  const prox = PROXIMAMENTE.map((m) => cardProx(m)).join("");
 
   return `
     <p class="step-title">Selección de desarrollos</p>
-    <p class="step-helper">Marcá los desarrollos que este cliente necesita. El iCINE final va a incluir solo las secciones que elijas — y si elegís varias, se generan juntas en un mismo documento.</p>
-    <div class="sel-fixed"><i class="ti ti-lock"></i> Pasos fijos, siempre presentes: <b>Sobre la empresa</b> al inicio y <b>Generar iCINE</b> al final.</div>
-    <div class="sel-grid">${cards}</div>
-    ${dedup}`;
+    <p class="step-helper">Marcá lo que este cliente necesita. El iCINE incluirá solo las secciones elegidas.</p>
+    <div class="sel-fixed"><i class="ti ti-lock"></i> Pasos fijos: <b>Sobre la empresa</b> al inicio y <b>Generar iCINE</b> al final.</div>
+
+    <p class="field-label" style="margin-top:6px">Proceso Comercial <span style="font-weight:400;color:var(--text-secondary)">— elegí las partes que apliquen</span></p>
+    <div class="sel-grid">${grupoProc}</div>
+
+    <p class="field-label" style="margin-top:16px">Otros desarrollos</p>
+    <div class="sel-grid">${otros}</div>
+
+    <p class="field-label" style="margin-top:16px">Próximamente</p>
+    <div class="sel-grid">${prox}</div>`;
 }
 
 export function attachSeleccionListeners(container, state, onChange) {
@@ -57,7 +71,6 @@ export function attachSeleccionListeners(container, state, onChange) {
     el.addEventListener("click", () => {
       const key = el.getAttribute("data-toggle-des");
       state.desarrollos[key] = !state.desarrollos[key];
-      // Si desactivo el paquete, "reportes" vuelve a estar disponible tal como estaba.
       onChange({ rerender: true });
     });
   });

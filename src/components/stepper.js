@@ -18,8 +18,9 @@ const PASO_CONFIRMACION = { key: "confirmacion", label: "Generar iCINE", icon: "
 export function getPasos(state) {
   const d = (state && state.desarrollos) || {};
   const pasos = [PASO_NE, PASO_SELECCION];
-  if (d.proceso) pasos.push(PASO_CAPTACION, PASO_PROCESO, PASO_REPORTERIA);
-  if (d.reportes && !d.proceso) pasos.push(PASO_REPORTERIA);
+  if (d.captacion) pasos.push(PASO_CAPTACION);
+  if (d.proceso) pasos.push(PASO_PROCESO);
+  if (d.reportes) pasos.push(PASO_REPORTERIA);
   if (d.chatbot) pasos.push(PASO_CHATBOT);
   if (d.api) pasos.push(PASO_API);
   if (d.app) pasos.push(PASO_APP);
