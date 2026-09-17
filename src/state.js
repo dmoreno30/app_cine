@@ -50,6 +50,7 @@ export function defaultState() {
 
   return {
     cliente: "",
+    meta: { url: "", licencia: "", consultor: "", jefeProyecto: "", version: "1.0", estado: "EN CREACIÓN" },
     ne: { descripcion: "" },
     empresa: {
       tipoProductos: "",
@@ -108,7 +109,9 @@ export function defaultState() {
     entidadesHabilitadas,
     entidades,
     reporteria: {
-      reportes: []   // [{ nombre, queMuestra, entidad, filtros, tipoVisualizacion, consideraciones }]
+      dataset: "",   // explicación general del DataSet a crear
+      reportes: [],  // [{ nombre, queMuestra, entidades:[], filtros, tipoVisualizacion, tiempo, consideraciones }]
+      roles: []      // [{ rol, permisos:[], observaciones }]
     },
     // Roles y permisos del CRM (tabla 2.4 del iCINE)
     roles: [{ rol: "", permisos: [], observaciones: "" }]
@@ -137,6 +140,7 @@ export function loadState() {
       ...base,
       ...parsed,
       ne: { ...base.ne, ...(parsed.ne || {}) },
+      meta: { ...base.meta, ...(parsed.meta || {}) },
       empresa: {
         ...base.empresa,
         ...(parsed.empresa || {}),
@@ -392,15 +396,28 @@ export function buildCanonicalJSON(state) {
     }
   });
 
+  out.meta = {
+    url: (state.meta && state.meta.url || "").trim(),
+    licencia: (state.meta && state.meta.licencia || "").trim(),
+    consultor: (state.meta && state.meta.consultor || "").trim(),
+    jefeProyecto: (state.meta && state.meta.jefeProyecto || "").trim(),
+    version: (state.meta && state.meta.version) || "1.0",
+    estado: (state.meta && state.meta.estado) || "EN CREACIÓN"
+  };
   out.reporteria = {
+    dataset: (state.reporteria.dataset || "").trim(),
+    roles: (state.reporteria.roles || [])
+      .filter((r) => (r.rol || "").trim())
+      .map((r) => ({ rol: r.rol.trim(), permisos: (r.permisos || []).slice(), observaciones: (r.observaciones || "").trim() })),
     reportes: (state.reporteria.reportes || [])
       .filter((r) => (r.nombre || "").trim() || (r.queMuestra || "").trim())
       .map((r) => ({
         nombre: (r.nombre || "").trim(),
         queMuestra: (r.queMuestra || "").trim(),
-        entidad: (r.entidad || "").trim(),
+        entidades: Array.isArray(r.entidades) ? r.entidades.slice() : ((r.entidad || "").trim() ? [r.entidad.trim()] : []),
         filtros: (r.filtros || "").trim(),
         tipoVisualizacion: (r.tipoVisualizacion || "").trim(),
+        tiempo: (r.tiempo || "").trim(),
         consideraciones: (r.consideraciones || "").trim()
       }))
   };

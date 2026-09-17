@@ -37,8 +37,20 @@ export function renderNEStep(state) {
     </div>
 
     <div class="field-block">
-      <label class="field-label">¿A qué se dedica la empresa y qué esperan implementar?</label>
-      <textarea data-ne-descripcion rows="5" placeholder="Ej. Distribuidora de repuestos. Hoy llevan el seguimiento en Excel y quieren ordenar el proceso comercial...">${escapeHtml(state.ne.descripcion)}</textarea>
+      <label class="field-label">Antecedentes de la empresa</label>
+      <p class="step-helper" style="margin-top:2px">Describí bien el contexto: a qué se dedica, cómo trabaja hoy, qué problemas tiene y qué busca lograr. Este texto va en los Antecedentes del iCINE.</p>
+      <textarea data-ne-descripcion rows="6" placeholder="Ej. SUR COMPANY es una empresa de ingeniería y venta de productos. Hoy gestiona sus oportunidades en hojas de cálculo, sin visibilidad del pipeline ni trazabilidad. Busca ordenar y automatizar su proceso comercial en Bitrix24...">${escapeHtml(state.ne.descripcion)}</textarea>
+    </div>
+
+    <div class="field-block" style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <label class="field-label">URL del Bitrix24 del cliente</label>
+        <input type="text" data-meta-url value="${escapeAttr(state.meta && state.meta.url || "")}" placeholder="https://cliente.bitrix24.es">
+      </div>
+      <div style="flex:1;min-width:220px">
+        <label class="field-label">Licencia actual</label>
+        <input type="text" data-meta-licencia value="${escapeAttr(state.meta && state.meta.licencia || "")}" placeholder="Ej. Professional, Standard, Gratuita…">
+      </div>
     </div>
 
     <div class="field-block">
@@ -80,6 +92,9 @@ export function attachNEListeners(container, state, onChange) {
   const emp = state.empresa;
   const bind = (sel, setter) => { const el = container.querySelector(sel); if (el) el.addEventListener("input", (e) => { setter(e.target.value); onChange({ rerender: false }); }); };
 
+  if (!state.meta) state.meta = {};
+  bind("[data-meta-url]", (v) => state.meta.url = v);
+  bind("[data-meta-licencia]", (v) => state.meta.licencia = v);
   bind("[data-cliente]", (v) => state.cliente = v);
   bind("[data-ne-descripcion]", (v) => state.ne.descripcion = v);
   bind("[data-empresa-productos]", (v) => emp.tipoProductos = v);

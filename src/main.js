@@ -22,7 +22,7 @@ let vista = "inicio";            // "inicio" | "form"
 let cargando = true;
 const devProy = new URLSearchParams(window.location.search).get("proyecto"); // fallback de prueba
 
-const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", usuario: null };
+const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null };
 const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "" };
 
 function normalizar(s) {
@@ -33,6 +33,7 @@ function normalizar(s) {
   const out = {
     ...base, ...s,
     ne: { ...base.ne, ...(s.ne || {}) },
+    meta: { ...base.meta, ...(s.meta || {}) },
     empresa: {
       ...base.empresa, ...emp,
       monedas: { ...base.empresa.monedas, ...(emp.monedas || {}) },
@@ -54,7 +55,11 @@ function normalizar(s) {
     },
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },
     entidades: { ...base.entidades, ...(s.entidades || {}) },
-    reporteria: { reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes },
+    reporteria: {
+      dataset: (s.reporteria || {}).dataset || "",
+      reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes,
+      roles: Array.isArray((s.reporteria || {}).roles) ? s.reporteria.roles : base.reporteria.roles
+    },
     roles: Array.isArray(s.roles) && s.roles.length ? s.roles : base.roles,
     consideraciones: { ...base.consideraciones, ...(s.consideraciones || {}) }
   };
@@ -93,6 +98,7 @@ async function crear(neTexto, tipo) {
   if (!ctx.proyectoId) { setStatus("No se detectó el proyecto."); return; }
   sesion.neTexto = neTexto; sesion.tipo = tipo || "icine";
   state = normalizar(resetState());
+  aplicarMetaContexto();
   setStatus("Creando…");
   const r = await crearDesarrollo(datosComunes());
   if (r && r.ok) { sesion.elementId = r.elementId; vista = "form"; currentStep = 0; setStatus("Creado #" + r.elementId); render(); }
@@ -103,6 +109,7 @@ async function continuar(elementId) {
   const r = await cargarDesarrollo(elementId);
   if (r && r.ok) {
     state = normalizar(r.borrador || {});
+    aplicarMetaContexto();
     sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
     vista = "form"; currentStep = 0; setStatus("Editando #" + r.elementId); render();
   } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
@@ -239,6 +246,7 @@ async function init() {
   ctx.proyectoId = c.proyectoId || devProy || null;
   ctx.proyectoNombre = c.proyectoNombre || (devProy ? "Proyecto de prueba" : "");
   ctx.jefeId = c.jefeId || "";
+  ctx.jefeNombre = c.jefeNombre || "";
   ctx.usuario = c.usuario || null;
   await refrescarLista();
   cargando = false;

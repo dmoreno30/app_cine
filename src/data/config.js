@@ -105,7 +105,7 @@ export const MONEDAS = [
 
 // Reportería — sugerencias para los campos editables de cada reporte.
 export const TIPOS_VISUALIZACION = ["Tabla", "Tabla resumen", "Tabla detalle", "Barras", "Líneas comparativas", "Indicador (KPI)", "Embudo", "Torta", "Otra"];
-export const ENTIDADES_REPORTE = ["Prospectos", "Negociaciones", "Contactos", "Compañías", "Tareas", "Cotizaciones", "Facturas", "Negociaciones + Contactos", "Negociación + Tareas"];
+export const ENTIDADES_REPORTE = ["Prospectos", "Negociaciones", "Contactos", "Compañías", "Tareas", "Actividades", "Cotizaciones", "Facturas", "Productos", "SPA / Procesos", "Usuarios"];
 
 // API / Integración
 export const OBJETOS_API = ["Contactos", "Compañías", "Prospectos", "Negociaciones", "Cotizaciones", "Facturas", "Productos", "Tareas", "Otro"];

@@ -29,11 +29,16 @@ export async function obtenerContextoBX() {
   const u = await call("user.current", {});
   const usuario = u ? { id: u.ID, nombre: `${u.NAME || ""} ${u.LAST_NAME || ""}`.trim() } : null;
 
-  let proyectoNombre = "", jefeId = "";
+  let proyectoNombre = "", jefeId = "", jefeNombre = "";
   if (proyectoId) {
     const g = await call("sonet_group.get", { FILTER: { ID: proyectoId } });
     const grupo = Array.isArray(g) ? g[0] : (g && Object.values(g)[0]);
     if (grupo) { proyectoNombre = grupo.NAME || ""; jefeId = grupo.OWNER_ID || ""; }
+    if (jefeId) {
+      const ju = await call("user.get", { ID: jefeId });
+      const j = Array.isArray(ju) ? ju[0] : (ju && Object.values(ju)[0]);
+      if (j) jefeNombre = `${j.NAME || ""} ${j.LAST_NAME || ""}`.trim();
+    }
   }
-  return { proyectoId, usuario, proyectoNombre, jefeId };
+  return { proyectoId, usuario, proyectoNombre, jefeId, jefeNombre };
 }
