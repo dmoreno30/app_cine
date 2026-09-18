@@ -82,6 +82,12 @@ function normalizar(s) {
   return out;
 }
 function setStatus(t) { sesion.status = t; const el = document.getElementById("sesion-status"); if (el) el.textContent = t; }
+function aplicarMetaContexto() {
+  if (!state.meta) state.meta = {};
+  if (ctx.usuario && ctx.usuario.nombre) state.meta.consultor = ctx.usuario.nombre;
+  if (ctx.jefeNombre) state.meta.jefeProyecto = ctx.jefeNombre;
+  if (!state.meta.version) state.meta.version = "1.0";
+}
 function datosComunes() {
   return {
     proyectoId: ctx.proyectoId, proyectoNombre: ctx.proyectoNombre,
