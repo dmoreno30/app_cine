@@ -34,10 +34,13 @@ export default async function handler(req, res) {
   try {
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     const base = `${slug(json.cliente)}-${stamp}`;
+    // Nombre de descarga legible: iCINE_[Cliente]_borrador.docx
+    const nombreCliente = (json.cliente || "cliente").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g, "").trim().replace(/\s+/g, "_") || "cliente";
+    const nombreArchivo = `iCINE_${nombreCliente}_borrador`;
 
     const { buffer, nes, cliente } = await buildICINE(json);
 
-    const docxBlob = await put(`icine/${base}.docx`, buffer, {
+    const docxBlob = await put(`icine/${stamp}/${nombreArchivo}.docx`, buffer, {
       access: "public",
       token: BLOB_TOKEN,
       contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

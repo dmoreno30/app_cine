@@ -34,6 +34,8 @@ function normalizar(s) {
     ...base, ...s,
     ne: { ...base.ne, ...(s.ne || {}) },
     meta: { ...base.meta, ...(s.meta || {}) },
+    cip: { ...base.cip, ...(s.cip || {}) },
+    pruebas: { ...base.pruebas, ...(s.pruebas || {}) },
     empresa: {
       ...base.empresa, ...emp,
       monedas: { ...base.empresa.monedas, ...(emp.monedas || {}) },
@@ -193,13 +195,30 @@ function render() {
   // Campo "Consideraciones" al final de cada NE (se agrega al iCINE al cerrar la NE)
   const NE_CONS = { captacion: "captacion", proceso: "proceso", reporteria: "reporteria", chatbot: "chatbot", api: "api", app: "app", rrhh: "rrhh" };
   if (NE_CONS[stepKey]) {
+    const ck = NE_CONS[stepKey];
+    if (!state.cip) state.cip = {};
+    if (!Array.isArray(state.cip[ck])) state.cip[ck] = [];
+    const cipRows = state.cip[ck].map((c, i) => `
+      <div class="row-flex">
+        <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación">
+        <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:130px">
+        <button class="icon-btn" data-cip-remove="${ck}|${i}"><i class="ti ti-x"></i></button>
+      </div>`).join("");
+    bodyHtml += `
+      <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
+        <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="color:#c00">*</span></label>
+        <p class="step-helper" style="margin-top:2px">Capacitación de implementación personalizada para esta NE. Se agrega a la tabla de tiempos (Capacitación — CIP).</p>
+        ${cipRows}
+        <button class="add-btn" data-cip-add="${ck}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar capacitación</button>
+      </div>`;
+
     if (!state.consideraciones) state.consideraciones = {};
-    const val = escapeHtml(state.consideraciones[NE_CONS[stepKey]] || "");
+    const val = escapeHtml(state.consideraciones[ck] || "");
     bodyHtml += `
       <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
         <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
         <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
-        <textarea data-consideraciones="${NE_CONS[stepKey]}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
+        <textarea data-consideraciones="${ck}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
       </div>`;
   }
 
@@ -231,6 +250,21 @@ function render() {
     if (!state.consideraciones) state.consideraciones = {};
     state.consideraciones[k] = e.target.value;
   });
+
+  // CIP (capacitación) por NE
+  app.querySelectorAll("[data-cip-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    const k = el.getAttribute("data-cip"); const i = parseInt(el.getAttribute("data-cip-idx"), 10);
+    state.cip[k][i][el.getAttribute("data-cip-prop")] = e.target.value;
+  }));
+  app.querySelectorAll("[data-cip-add]").forEach((el) => el.addEventListener("click", () => {
+    const k = el.getAttribute("data-cip-add");
+    (state.cip[k] = state.cip[k] || []).push({ titulo: "", tiempo: "" });
+    render();
+  }));
+  app.querySelectorAll("[data-cip-remove]").forEach((el) => el.addEventListener("click", () => {
+    const [k, i] = el.getAttribute("data-cip-remove").split("|");
+    state.cip[k].splice(parseInt(i, 10), 1); render();
+  }));
 
   const card = app.querySelector(".card");
   if (stepKey === "ne") attachNEListeners(card, state, onChange);

@@ -1,4 +1,4 @@
-import { MONEDAS } from "../data/config.js";
+import { MONEDAS, WEBSERVICES } from "../data/config.js";
 import { escapeHtml, escapeAttr } from "../utils.js";
 
 export function renderNEStep(state) {
@@ -85,7 +85,26 @@ export function renderNEStep(state) {
     <div class="field-block">
       <label class="chk-line"><input type="checkbox" data-empresa-usaimp ${emp.usaImpuestos ? "checked" : ""}> La empresa aplica impuestos</label>
     </div>
-    ${bloqueImpuestos}`;
+    ${bloqueImpuestos}
+
+    <div class="field-block">
+      <label class="field-label">¿La instancia/licencia actual alcanza o se recomienda upgrade?</label>
+      <p class="step-helper" style="margin-top:2px">Se agrega en "Recomendaciones funcionales y de infraestructura" del iCINE.</p>
+      <textarea data-empresa-recomendacion rows="2" placeholder="Ej. La licencia Standard alcanza para el alcance actual / Se recomienda upgrade a Professional para automatizaciones ilimitadas...">${escapeHtml(emp.recomendacionInstancia || "")}</textarea>
+    </div>
+
+    <div class="field-block">
+      <label class="field-label">Infraestructura / Web Services</label>
+      <select data-empresa-webservice>
+        <option value="">No aplica</option>
+        ${WEBSERVICES.map((w) => `<option value="${escapeAttr(w)}" ${emp.webService === w ? "selected" : ""}>${w}</option>`).join("")}
+      </select>
+    </div>
+
+    <div class="field-block">
+      <label class="field-label">Fuera del alcance de este iCINE (Versión 2 / Fase 2)</label>
+      <textarea data-empresa-fasedos rows="3" placeholder="Qué queda propuesto para una fase posterior (integraciones, reportería avanzada, etc.)">${escapeHtml(emp.faseDos || "")}</textarea>
+    </div>`;
 }
 
 export function attachNEListeners(container, state, onChange) {
@@ -103,6 +122,10 @@ export function attachNEListeners(container, state, onChange) {
   bind("[data-empresa-otras-monedas]", (v) => emp.otrasMonedas = v);
   bind("[data-empresa-unidades]", (v) => emp.unidadesMedida = v);
   bind("[data-empresa-paisimp]", (v) => emp.paisImpuestos = v);
+  bind("[data-empresa-recomendacion]", (v) => emp.recomendacionInstancia = v);
+  bind("[data-empresa-fasedos]", (v) => emp.faseDos = v);
+  const ws = container.querySelector("[data-empresa-webservice]");
+  if (ws) ws.addEventListener("change", (e) => { emp.webService = e.target.value; onChange({ rerender: false }); });
 
   container.querySelectorAll("[data-toggle-moneda]").forEach((el) => el.addEventListener("click", () => {
     const k = el.getAttribute("data-toggle-moneda"); emp.monedas[k] = !emp.monedas[k]; onChange({ rerender: true });

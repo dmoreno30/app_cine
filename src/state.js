@@ -61,13 +61,20 @@ export function defaultState() {
       impuestos: [],
       unidadesMedida: "",
       direccion: "",
-      cantidadEmpleados: ""
+      cantidadEmpleados: "",
+      faseDos: "",                 // Fuera del alcance / Versión 2
+      recomendacionInstancia: "",  // ¿la instancia alcanza o requiere upgrade?
+      webService: ""               // Infraestructura / Web Services (basic/standard/advance)
     },
     // Qué desarrollos eligió documentar (pantalla "Selección de desarrollos").
     // "proceso" es un paquete: activa Captación + Proceso Comercial + Reportería.
     desarrollos: { captacion: true, proceso: true, reportes: true, chatbot: false, api: false, app: false, rrhh: false },
     // Consideraciones por NE (texto libre que se agrega al final de cada NE en el iCINE)
     consideraciones: { captacion: "", proceso: "", reporteria: "", chatbot: "", api: "", app: "", rrhh: "" },
+    // Capacitación (CIP) por NE: [{ titulo, tiempo }]
+    cip: { captacion: [], proceso: [], reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
+    // Pruebas (solo tiempos) para la tabla del punto 5
+    pruebas: { qa: "", alpha: "" },
     // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
     modulos: { api: "", app: "" },
     // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
@@ -157,6 +164,8 @@ export function loadState() {
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
       consideraciones: { ...base.consideraciones, ...(parsed.consideraciones || {}) },
+      cip: { ...base.cip, ...(parsed.cip || {}) },
+      pruebas: { ...base.pruebas, ...(parsed.pruebas || {}) },
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
       api: { ...base.api, ...(parsed.api || {}), flujos: Array.isArray((parsed.api || {}).flujos) ? parsed.api.flujos : base.api.flujos },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
@@ -313,10 +322,15 @@ export function buildCanonicalJSON(state) {
         .map((t) => ({ nombre: t.nombre.trim(), porcentaje: String(t.porcentaje == null ? "" : t.porcentaje).trim() })) : [],
       unidadesMedida: (state.empresa.unidadesMedida || "").trim(),
       direccion: (state.empresa.direccion || "").trim(),
-      cantidadEmpleados: String(state.empresa.cantidadEmpleados == null ? "" : state.empresa.cantidadEmpleados).trim()
+      cantidadEmpleados: String(state.empresa.cantidadEmpleados == null ? "" : state.empresa.cantidadEmpleados).trim(),
+      faseDos: (state.empresa.faseDos || "").trim(),
+      recomendacionInstancia: (state.empresa.recomendacionInstancia || "").trim(),
+      webService: (state.empresa.webService || "").trim()
     },
     // Desarrollos seleccionados (paquete proceso + módulos sueltos).
     desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),
+    cip: Object.fromEntries(Object.entries(state.cip || {}).map(([k, arr]) => [k, (arr || []).filter((c) => (c.titulo || "").trim() || (c.tiempo || "").trim()).map((c) => ({ titulo: (c.titulo || "").trim(), tiempo: (c.tiempo || "").trim() }))])),
+    pruebas: { qa: (state.pruebas && state.pruebas.qa || "").trim(), alpha: (state.pruebas && state.pruebas.alpha || "").trim() },
     consideraciones: {
       captacion: (state.consideraciones && state.consideraciones.captacion || "").trim(),
       proceso: (state.consideraciones && state.consideraciones.proceso || "").trim(),

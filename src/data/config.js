@@ -117,3 +117,5 @@ export const DIRECCIONES_API = [
 
 // Roles y permisos del CRM (multi-selección por rol)
 export const PERMISOS_CRM = ["Crear", "Ver", "Editar", "Eliminar", "Exportar", "Importar"];
+
+export const WEBSERVICES = ["Webservice Basic", "Webservice Standard", "Webservice Advance"];
