@@ -59,7 +59,7 @@ function normalizar(s) {
     entidades: { ...base.entidades, ...(s.entidades || {}) },
     reporteria: {
       descripcionReportes: (s.reporteria || {}).descripcionReportes || "",
-      dataset: (s.reporteria || {}).dataset || "",
+      datasets: Array.isArray((s.reporteria || {}).datasets) ? s.reporteria.datasets : (((s.reporteria || {}).dataset || "").trim() ? [{ descripcion: s.reporteria.dataset, tiempo: "" }] : base.reporteria.datasets),
       reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes,
       roles: Array.isArray((s.reporteria || {}).roles) ? s.reporteria.roles : base.reporteria.roles
     },

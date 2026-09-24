@@ -80,8 +80,17 @@ export function renderReporteriaStep(state) {
     </div>
 
     <div class="field-block">
-      <label class="field-label">Explicación general del Dataset a crear</label>
-      <textarea data-rep-dataset rows="3" placeholder="Ej. Se creará un Dataset en BI Builder que consolida negociaciones, prospectos y tareas...">${escapeHtml(rep.dataset || "")}</textarea>
+      <label class="field-label">Datasets a crear <span style="font-weight:400;color:var(--text-secondary)">— descripción y tiempo (podés agregar varios)</span></label>
+      ${(rep.datasets || []).map((d, i) => `
+        <div class="rep-card">
+          <div class="rep-head">
+            <span class="paso-num">${i + 1}</span>
+            <input type="text" data-ds-idx="${i}" data-ds-prop="tiempo" value="${escapeAttr(d.tiempo || "")}" placeholder="Tiempo (ej. 4 h)" style="max-width:150px">
+            <button class="icon-btn" data-ds-remove="${i}"><i class="ti ti-trash"></i></button>
+          </div>
+          <textarea data-ds-idx="${i}" data-ds-prop="descripcion" rows="3" placeholder="Explicación del Dataset (qué consolida, de qué entidades…)">${escapeHtml(d.descripcion || "")}</textarea>
+        </div>`).join("") || '<p style="font-size:13px;color:#888;margin:4px 0">Sin datasets todavía.</p>'}
+      <button class="add-btn" data-ds-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar Dataset</button>
     </div>
 
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;background:#fafafa">
@@ -111,8 +120,13 @@ export function attachReporteriaListeners(container, state, onChange) {
 
   const desc = container.querySelector("[data-rep-descripcion]");
   if (desc) desc.addEventListener("input", (e) => { rep.descripcionReportes = e.target.value; onChange({ rerender: false }); });
-  const ds = container.querySelector("[data-rep-dataset]");
-  if (ds) ds.addEventListener("input", (e) => { rep.dataset = e.target.value; onChange({ rerender: false }); });
+  if (!Array.isArray(rep.datasets)) rep.datasets = [];
+  container.querySelectorAll("[data-ds-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    rep.datasets[parseInt(el.getAttribute("data-ds-idx"), 10)][el.getAttribute("data-ds-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  const dsAdd = container.querySelector("[data-ds-add]");
+  if (dsAdd) dsAdd.addEventListener("click", () => { rep.datasets.push({ descripcion: "", tiempo: "" }); onChange({ rerender: true }); });
+  container.querySelectorAll("[data-ds-remove]").forEach((el) => el.addEventListener("click", () => { rep.datasets.splice(parseInt(el.getAttribute("data-ds-remove"), 10), 1); onChange({ rerender: true }); }));
 
   container.querySelectorAll("[data-rep-add-cat]").forEach((el) => el.addEventListener("click", () => {
     const cat = CATALOGO_REPORTES.find((c) => c.key === el.getAttribute("data-rep-add-cat"));
