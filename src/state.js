@@ -116,7 +116,8 @@ export function defaultState() {
     entidadesHabilitadas,
     entidades,
     reporteria: {
-      dataset: "",   // explicación general del DataSet a crear
+      descripcionReportes: "",  // qué se creará en los reportes (general)
+      dataset: "",   // explicación general del Dataset a crear
       reportes: [],  // [{ nombre, queMuestra, entidades:[], filtros, tipoVisualizacion, tiempo, consideraciones }]
       roles: []      // [{ rol, permisos:[], observaciones }]
     },
@@ -419,6 +420,7 @@ export function buildCanonicalJSON(state) {
     estado: (state.meta && state.meta.estado) || "EN CREACIÓN"
   };
   out.reporteria = {
+    descripcionReportes: (state.reporteria.descripcionReportes || "").trim(),
     dataset: (state.reporteria.dataset || "").trim(),
     roles: (state.reporteria.roles || [])
       .filter((r) => (r.rol || "").trim())

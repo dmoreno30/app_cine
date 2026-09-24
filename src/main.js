@@ -58,6 +58,7 @@ function normalizar(s) {
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },
     entidades: { ...base.entidades, ...(s.entidades || {}) },
     reporteria: {
+      descripcionReportes: (s.reporteria || {}).descripcionReportes || "",
       dataset: (s.reporteria || {}).dataset || "",
       reportes: Array.isArray((s.reporteria || {}).reportes) ? s.reporteria.reportes : base.reporteria.reportes,
       roles: Array.isArray((s.reporteria || {}).roles) ? s.reporteria.roles : base.reporteria.roles
