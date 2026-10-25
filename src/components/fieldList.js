@@ -3,12 +3,16 @@ import { escapeAttr } from "../utils.js";
 
 export function renderFieldList(entityKey, fields) {
   const rows = fields.map((f, i) => `
-    <div class="row-flex">
+    <div class="row-flex" style="align-items:center">
       <input type="text" data-field-entity="${entityKey}" data-field-prop="nombre" data-field-idx="${i}"
              value="${escapeAttr(f.nombre)}" placeholder="Nombre del campo">
       <select data-field-entity="${entityKey}" data-field-prop="tipo" data-field-idx="${i}">
         ${TIPOS_CAMPO.map((t) => `<option value="${t}" ${f.tipo === t ? "selected" : ""}>${t}</option>`).join("")}
       </select>
+      <label class="checkbox-row" style="margin:0;white-space:nowrap" title="Si no se marca, es un campo nativo de Bitrix24">
+        <input type="checkbox" data-field-entity="${entityKey}" data-field-prop="personalizado" data-field-idx="${i}" ${f.personalizado !== false ? "checked" : ""}>
+        Personalizado
+      </label>
       <button class="icon-btn" data-remove-field="${entityKey}|${i}"><i class="ti ti-x"></i></button>
     </div>`).join("");
 
@@ -28,14 +32,15 @@ export function attachFieldListeners(container, state, onChange) {
       const entity = el.getAttribute("data-field-entity");
       const prop = el.getAttribute("data-field-prop");
       const idx = parseInt(el.getAttribute("data-field-idx"), 10);
-      state.entidades[entity].camposPersonalizados[idx][prop] = e.target.value;
+      const val = el.type === "checkbox" ? el.checked : e.target.value;
+      state.entidades[entity].camposPersonalizados[idx][prop] = val;
       onChange({ rerender: false });
     });
   });
   container.querySelectorAll("[data-add-field]").forEach((el) => {
     el.addEventListener("click", () => {
       const entity = el.getAttribute("data-add-field");
-      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto" });
+      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true });
       onChange({ rerender: true });
     });
   });

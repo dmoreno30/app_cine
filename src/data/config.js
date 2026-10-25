@@ -89,7 +89,7 @@ export const ENTIDADES_BOT = [
   "Tareas", "Cotizaciones", "Facturas", "SPA / Proceso", "Lista", "Otra"
 ];
 
-export const TIPOS_CAMPO = ["Texto", "Lista", "Fecha", "Numérico", "Sí/No"];
+export const TIPOS_CAMPO = ["Texto", "Lista", "Fecha", "Numérico", "Sí/No", "Vincular a usuario", "Fecha y hora", "Dinero", "Archivo", "Dirección"];
 
 // Monedas con las que puede operar el cliente (multi-selección en "Sobre la empresa").
 // Por ahora se capturan para uso interno; todavía no se muestran en el iCINE.

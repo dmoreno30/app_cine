@@ -42,9 +42,19 @@ export function renderProcesoComercialStep(state) {
       <textarea data-proceso-intro rows="4" placeholder="Explica el proceso comercial completo…">${escapeHtml(state.procesoIntro || "")}</textarea>
     </div>`;
 
+  const cap = (state.cip && Array.isArray(state.cip.proceso) && state.cip.proceso[0]) || { titulo: "", tiempo: "" };
+  const capHtml = `
+    <div class="field-block">
+      <label class="field-label"><i class="ti ti-school"></i> Capacitación del proceso comercial <span style="color:#d00">*</span></label>
+      <p class="step-helper">Una sola capacitación para todo el proceso comercial (no depende de la entidad). Se suma a la tabla de tiempos del iCINE (CIP).</p>
+      <input type="text" data-pc-cap-prop="titulo" value="${escapeAttr(cap.titulo || "")}" placeholder="Título de la capacitación (ej. Uso del CRM comercial)">
+      <input type="text" data-pc-cap-prop="tiempo" value="${escapeAttr(cap.tiempo || "")}" placeholder="Tiempo (ej. 4 h)" style="max-width:160px;margin-top:8px">
+    </div>`;
+
   return `
     ${rolesHtml}
     ${introHtml}
+    ${capHtml}
     ${mapHtml}
     <div class="subtabs">${subtabsHtml}</div>
     <div id="entity-form-container">${formHtml}</div>`;
@@ -69,21 +79,27 @@ function renderEntityForm(state, key) {
     html += renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso);
     html += renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo);
     html += renderExitoStage(key, data.exito || { titulo: "", descripcion: "" });
-  }
-
-  if (cfg.type === "pipeline") {
-    html += renderPasoAPaso(key, data.flujoPasos || []);
+    html += renderActividad(key, "actividadEtapas", "Configurar las etapas", data.actividadEtapas);
+    html += renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
   }
 
   html += renderFieldList(key, data.camposPersonalizados);
-
-  if (cfg.type === "pipeline") {
-    html += renderAutomatizaciones(key, data.automatizaciones || []);
-  }
+  html += renderActividad(key, "actividadCampos", "Crear campos y ordenar la ficha", data.actividadCampos);
+  html += renderAutomatizaciones(key, data.automatizaciones || [], cfg.type);
 
   if (key === "cotizaciones") html += renderOrigenExternoCotizaciones(data.origenExterno);
 
   return html;
+}
+
+function renderActividad(key, slot, label, act) {
+  act = act || { descripcion: "", tiempo: "" };
+  return `
+    <div class="field-block">
+      <label class="field-label">${label} <span style="font-weight:400;color:var(--text-secondary)">— actividad y tiempo (se suma al iCINE)</span></label>
+      <textarea data-act="${key}" data-act-slot="${slot}" data-act-prop="descripcion" rows="2" placeholder="Describe la actividad…">${escapeHtml(act.descripcion || "")}</textarea>
+      <input type="text" data-act="${key}" data-act-slot="${slot}" data-act-prop="tiempo" value="${escapeAttr(act.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:160px">
+    </div>`;
 }
 
 function renderOrigenExternoCotizaciones(oe) {
@@ -149,7 +165,7 @@ function renderExitoStage(key, exito) {
     </div>`;
 }
 
-function renderPasoAPaso(key, pasos) {
+function renderPasoAPaso(key, pasos, label) {
   const rows = pasos.map((p, i) => `
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
@@ -165,22 +181,29 @@ function renderPasoAPaso(key, pasos) {
     </div>`).join("");
   return `
     <div class="field-block">
-      <label class="field-label">Ahora explica el paso a paso del proceso de prospección <span style="font-weight:400;color:var(--text-secondary)">— desde que inicia hasta su fin (cierre exitoso o fallido)</span></label>
+      <label class="field-label">Ahora explica el paso a paso del proceso de ${(label || "Prospectos").toLowerCase()} <span style="font-weight:400;color:var(--text-secondary)">— desde que inicia hasta su fin (cierre exitoso o fallido)</span></label>
       ${rows}
       <button class="add-btn" data-paso-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
     </div>`;
 }
 
-function renderAutomatizaciones(key, autos) {
+function renderAutomatizaciones(key, autos, tipo) {
+  const opcional = tipo !== "pipeline";
   const rows = autos.map((a, i) => `
-    <div class="row-flex" style="align-items:flex-start">
-      <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder="Disparador (ej. Etapa X / Creación)" style="max-width:220px">
-      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace la automatización">${escapeHtml(a.valor || "")}</textarea>
-      <button class="icon-btn" data-auto-remove="${key}|${i}"><i class="ti ti-x"></i></button>
+    <div class="rep-card">
+      <div class="row-flex" style="align-items:flex-start">
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder="Disparador (ej. Creación / cambio de etapa)">
+        <button class="icon-btn" data-auto-remove="${key}|${i}"><i class="ti ti-x"></i></button>
+      </div>
+      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace la automatización / proceso de negocio">${escapeHtml(a.valor || "")}</textarea>
+      <div class="row-flex">
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Etapa donde se ejecuta">
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="tiempo" value="${escapeAttr(a.tiempo || "")}" placeholder="Tiempo (ej. 1 h)" style="max-width:150px">
+      </div>
     </div>`).join("");
   return `
     <div class="field-block">
-      <label class="field-label">Automatizaciones <span style="font-weight:400;color:var(--text-secondary)">— disparador y qué hace</span></label>
+      <label class="field-label">Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— disparador, qué hace, etapa y tiempo${opcional ? " (opcional)" : ""}</span></label>
       ${rows}
       <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar automatización</button>
     </div>`;
@@ -240,6 +263,28 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   // Explicación global del proceso comercial
   const introEl = container.querySelector("[data-proceso-intro]");
   if (introEl) introEl.addEventListener("input", (e) => { state.procesoIntro = e.target.value; onChange({ rerender: false }); });
+
+  // Capacitación (CIP) única del proceso comercial
+  container.querySelectorAll("[data-pc-cap-prop]").forEach((el) => {
+    el.addEventListener("input", (e) => {
+      if (!state.cip) state.cip = {};
+      if (!Array.isArray(state.cip.proceso) || !state.cip.proceso.length) state.cip.proceso = [{ titulo: "", tiempo: "" }];
+      state.cip.proceso[0][el.getAttribute("data-pc-cap-prop")] = e.target.value;
+      onChange({ rerender: false });
+    });
+  });
+
+  // Actividades con tiempo (configurar etapas / crear campos)
+  container.querySelectorAll("[data-act-prop]").forEach((el) => {
+    el.addEventListener("input", (e) => {
+      const key = el.getAttribute("data-act");
+      const slot = el.getAttribute("data-act-slot");
+      const prop = el.getAttribute("data-act-prop");
+      if (!state.entidades[key][slot] || typeof state.entidades[key][slot] !== "object") state.entidades[key][slot] = { descripcion: "", tiempo: "" };
+      state.entidades[key][slot][prop] = e.target.value;
+      onChange({ rerender: false });
+    });
+  });
 
   // Toggle minimizar Roles y permisos
   const rolToggle = container.querySelector("[data-rol-toggle]");
@@ -316,7 +361,7 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   }));
   container.querySelectorAll("[data-auto-add]").forEach((el) => el.addEventListener("click", () => {
     const key = el.getAttribute("data-auto-add");
-    (state.entidades[key].automatizaciones = state.entidades[key].automatizaciones || []).push({ parametro: "", valor: "" });
+    (state.entidades[key].automatizaciones = state.entidades[key].automatizaciones || []).push({ parametro: "", valor: "", etapa: "", tiempo: "" });
     onChange({ rerender: true });
   }));
   container.querySelectorAll("[data-auto-remove]").forEach((el) => el.addEventListener("click", () => {

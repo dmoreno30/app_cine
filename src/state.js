@@ -3,23 +3,70 @@ import { CATALOGO_RRHH, CAMPOS_RRHH } from "./data/rrhh.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
 
-function defaultPipelineEntity() {
-  return {
+// Texto base editable por entidad (opción "base completa"): el desarrollador
+// solo ajusta. Las entidades sin preset arrancan vacías (ligeras).
+const PRESETS_PIPELINE = {
+  prospectos: {
+    flujo: "El prospecto ingresa desde los canales de captación, se registra automáticamente en Bitrix24 y se asigna a un asesor. El asesor califica el interés y la capacidad de compra; si califica, se convierte en una negociación; si no, se descarta registrando el motivo.",
+    etapasProgreso: [
+      { nombre: "Nuevo", descripcion: "Prospecto recién ingresado, aún sin contactar." },
+      { nombre: "Contactado", descripcion: "Primer contacto realizado con el prospecto." },
+      { nombre: "Calificado", descripcion: "Se confirmó interés y capacidad de compra." }
+    ],
+    exito: { titulo: "Convertido a negociación", descripcion: "El prospecto calificado pasa al pipeline de Negociaciones." },
+    etapasFallo: [{ nombre: "Descartado", descripcion: "Sin interés o fuera de perfil; se registra el motivo del descarte." }],
+    actividadEtapas: { descripcion: "Creación del pipeline de Prospectos con sus etapas y reglas de avance.", tiempo: "" },
+    flujoPasos: [
+      { accion: "Registrar el prospecto en Bitrix24 y asignarlo a un asesor.", responsable: "Automatización / CRM", herramienta: "CRM", condicion: "Al ingresar desde un canal" },
+      { accion: "Contactar al prospecto y registrar el resultado del contacto.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "" },
+      { accion: "Calificar interés y capacidad; convertir a negociación o descartar con motivo.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "Según calificación" }
+    ],
+    actividadCampos: { descripcion: "Creación de los campos personalizados y orden de la ficha del prospecto.", tiempo: "" },
+    automatizaciones: [{ parametro: "Creación del prospecto", valor: "Asignar responsable automáticamente y notificar al asesor.", etapa: "Nuevo", tiempo: "" }]
+  },
+  negociaciones: {
+    flujo: "La oportunidad se abre al convertir un prospecto calificado. El asesor avanza la negociación por las etapas hasta ganarla (venta cerrada) o perderla (se registra el motivo de pérdida).",
+    etapasProgreso: [
+      { nombre: "En negociación", descripcion: "Oportunidad abierta, en gestión del asesor." },
+      { nombre: "Propuesta enviada", descripcion: "Se envió la cotización o propuesta al cliente." }
+    ],
+    exito: { titulo: "Venta ganada", descripcion: "El cliente acepta; se cierra la venta y pasa a facturación / post-venta." },
+    etapasFallo: [{ nombre: "Perdida", descripcion: "El cliente no avanza; se registra el motivo de pérdida." }],
+    actividadEtapas: { descripcion: "Creación del pipeline de Negociaciones con sus etapas y reglas.", tiempo: "" },
+    flujoPasos: [
+      { accion: "Abrir la negociación desde el prospecto convertido.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "" },
+      { accion: "Elaborar y enviar la propuesta / cotización.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "" },
+      { accion: "Registrar el cierre: ganada o perdida con su motivo.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "Al finalizar" }
+    ],
+    actividadCampos: { descripcion: "Creación de los campos personalizados y orden de la ficha de la negociación.", tiempo: "" },
+    automatizaciones: [{ parametro: "Cambio a 'Venta ganada'", valor: "Crear tarea de facturación / post-venta y notificar al responsable.", etapa: "Venta ganada", tiempo: "" }]
+  }
+};
+function defaultPipelineEntity(key) {
+  const base = {
     flujo: "",
     etapasProgreso: [{ nombre: "", descripcion: "" }],
     exito: { titulo: "", descripcion: "" },   // etapa de cierre exitoso (única, no múltiple)
     etapasFallo: [{ nombre: "", descripcion: "" }],
+    actividadEtapas: { descripcion: "", tiempo: "" },  // actividad: configurar las etapas (+tiempo)
     flujoPasos: [{ accion: "", responsable: "", herramienta: "", condicion: "" }],
-    camposPersonalizados: [{ nombre: "", tipo: "Texto" }],
-    automatizaciones: [{ parametro: "", valor: "" }]
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true }],
+    actividadCampos: { descripcion: "", tiempo: "" },  // actividad: crear campos / ordenar ficha (+tiempo)
+    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]
   };
+  const preset = PRESETS_PIPELINE[key];
+  return preset ? { ...base, ...JSON.parse(JSON.stringify(preset)) } : base;
 }
 function toStage(x) {
   if (typeof x === "string") return { nombre: x, descripcion: "" };
   return { nombre: x.nombre || x.etapa || "", descripcion: x.descripcion || x.desc || "" };
 }
 function defaultSimpleEntity() {
-  return { camposPersonalizados: [{ nombre: "", tipo: "Texto" }] };
+  return {
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true }],
+    actividadCampos: { descripcion: "", tiempo: "" },
+    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]  // disponible, no requerida
+  };
 }
 function defaultPostventaEntity() {
   return { facturaERP: false, erpNombre: "", deseaIntegracion: false, detalleIntegracion: "", procesoDescripcion: "" };
@@ -35,7 +82,7 @@ export function defaultState() {
     entidadesHabilitadas[key] = cfg.obligatorio ? true : (key === "prospectos");
 
     if (cfg.type === "pipeline") {
-      entidades[key] = defaultPipelineEntity();
+      entidades[key] = defaultPipelineEntity(key);
       if (key === "cotizaciones") {
         entidades[key].origenExterno = { usaOtroSoftware: false, cual: "", continuidad: "" };
       }
@@ -49,7 +96,7 @@ export function defaultState() {
   return {
     cliente: "",
     // Explicación libre del proceso comercial completo (requerida, va al iCINE)
-    procesoIntro: "",
+    procesoIntro: "El proceso comercial centraliza la gestión de oportunidades en Bitrix24, desde la captación del prospecto hasta el cierre de la venta. Cada registro avanza por pipelines con etapas claras, campos personalizados y automatizaciones que aseguran el seguimiento y evitan la pérdida de oportunidades.",
     meta: { url: "", licencia: "", consultor: "", jefeProyecto: "", version: "1.0", estado: "EN CREACIÓN" },
     ne: { descripcion: "" },
     empresa: {
@@ -72,7 +119,7 @@ export function defaultState() {
     // Consideraciones por NE (texto libre que se agrega al final de cada NE en el iCINE)
     consideraciones: { captacion: "", proceso: "", reporteria: "", chatbot: "", api: "", app: "", rrhh: "" },
     // Capacitación (CIP) por NE: [{ titulo, tiempo }]
-    cip: { captacion: [], proceso: [], reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
+    cip: { captacion: [], proceso: [{ titulo: "Capacitación en el uso del CRM comercial: pipelines, fichas, campos y automatizaciones.", tiempo: "" }], reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
     // Pruebas (solo tiempos) para la tabla del punto 5
     pruebas: { qa: "", alpha: "" },
     // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
@@ -212,7 +259,16 @@ export function resetState() {
 function cleanFields(arr) {
   return (arr || [])
     .filter((f) => (f.nombre || f.campo || "").trim())
-    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto" }));
+    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false }));
+}
+function cleanActividad(a) {
+  a = a || {};
+  return { descripcion: (a.descripcion || "").trim(), tiempo: (a.tiempo || "").trim() };
+}
+function cleanAutos(arr) {
+  return (arr || [])
+    .filter((a) => (a.parametro || "").trim() || (a.valor || "").trim() || (a.etapa || "").trim() || (a.tiempo || "").trim())
+    .map((a) => ({ parametro: (a.parametro || "").trim(), valor: (a.valor || "").trim(), etapa: (a.etapa || "").trim(), tiempo: (a.tiempo || "").trim() }));
 }
 function cleanStages(arr) {
   return (arr || [])
@@ -392,13 +448,13 @@ export function buildCanonicalJSON(state) {
         etapasProgreso: cleanStages(data.etapasProgreso),
         exito: { titulo: ((data.exito && data.exito.titulo) || "").trim(), descripcion: ((data.exito && data.exito.descripcion) || "").trim() },
         etapasFallo: cleanStages(data.etapasFallo),
+        actividadEtapas: cleanActividad(data.actividadEtapas),
         flujoPasos: (data.flujoPasos || [])
           .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
           .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() })),
         camposPersonalizados: cleanFields(data.camposPersonalizados),
-        automatizaciones: (data.automatizaciones || [])
-          .filter((a) => (a.parametro || "").trim() || (a.valor || "").trim())
-          .map((a) => ({ parametro: (a.parametro || "").trim(), valor: (a.valor || "").trim() }))
+        actividadCampos: cleanActividad(data.actividadCampos),
+        automatizaciones: cleanAutos(data.automatizaciones)
       };
       if (key === "cotizaciones" && data.origenExterno) {
         entry.origenExterno = {
@@ -409,7 +465,11 @@ export function buildCanonicalJSON(state) {
       }
       out.procesoComercial.entidades[key] = entry;
     } else if (cfg.type === "simple") {
-      out.procesoComercial.entidades[key] = { camposPersonalizados: cleanFields(data.camposPersonalizados) };
+      out.procesoComercial.entidades[key] = {
+        camposPersonalizados: cleanFields(data.camposPersonalizados),
+        actividadCampos: cleanActividad(data.actividadCampos),
+        automatizaciones: cleanAutos(data.automatizaciones)
+      };
     } else if (cfg.type === "postventa") {
       out.procesoComercial.entidades[key] = {
         facturaERP: !!data.facturaERP,

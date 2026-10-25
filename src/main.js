@@ -79,9 +79,16 @@ function normalizar(s) {
     if (Array.isArray(e.etapasProgreso)) e.etapasProgreso = e.etapasProgreso.map(toStage);
     if (Array.isArray(e.etapasFallo)) e.etapasFallo = e.etapasFallo.map(toStage);
     if (!e.exito || typeof e.exito !== "object") e.exito = { titulo: "", descripcion: "" };
+    if (!e.actividadEtapas || typeof e.actividadEtapas !== "object") e.actividadEtapas = { descripcion: "", tiempo: "" };
+    if (!e.actividadCampos || typeof e.actividadCampos !== "object") e.actividadCampos = { descripcion: "", tiempo: "" };
     if (!Array.isArray(e.flujoPasos)) e.flujoPasos = [{ accion: "", responsable: "", herramienta: "", condicion: "" }];
     if (!Array.isArray(e.automatizaciones)) {
-      e.automatizaciones = e.automatizacion ? [{ parametro: "", valor: e.automatizacion }] : [{ parametro: "", valor: "" }];
+      e.automatizaciones = e.automatizacion ? [{ parametro: "", valor: e.automatizacion, etapa: "", tiempo: "" }] : [{ parametro: "", valor: "", etapa: "", tiempo: "" }];
+    } else {
+      e.automatizaciones = e.automatizaciones.map((a) => ({ parametro: a.parametro || "", valor: a.valor || "", etapa: a.etapa || "", tiempo: a.tiempo || "" }));
+    }
+    if (Array.isArray(e.camposPersonalizados)) {
+      e.camposPersonalizados = e.camposPersonalizados.map((f) => ({ nombre: f.nombre || "", tipo: f.tipo || "Texto", personalizado: f.personalizado !== false }));
     }
   });
   return out;
@@ -201,13 +208,15 @@ function render() {
     const ck = NE_CONS[stepKey];
     if (!state.cip) state.cip = {};
     if (!Array.isArray(state.cip[ck])) state.cip[ck] = [];
-    const cipRows = state.cip[ck].map((c, i) => `
+    // En Proceso Comercial la capacitación se captura al inicio del paso (única, requerida),
+    // así que aquí no se vuelve a mostrar el bloque de CIP.
+    const cipRows = stepKey === "proceso" ? "" : state.cip[ck].map((c, i) => `
       <div class="row-flex">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:130px">
         <button class="icon-btn" data-cip-remove="${ck}|${i}"><i class="ti ti-x"></i></button>
       </div>`).join("");
-    bodyHtml += `
+    if (stepKey !== "proceso") bodyHtml += `
       <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
         <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="color:#c00">*</span></label>
         <p class="step-helper" style="margin-top:2px">Capacitación de implementación personalizada para esta NE. Se agrega a la tabla de tiempos (Capacitación — CIP).</p>
