@@ -53,6 +53,7 @@ function normalizar(s) {
     captacion: {
       ...base.captacion, ...cap,
       canales: Array.isArray(cap.canales) ? cap.canales : base.captacion.canales,
+      conexiones: Array.isArray(cap.conexiones) ? cap.conexiones : base.captacion.conexiones,
       chatbot: { ...base.captacion.chatbot, ...(cap.chatbot || {}) }
     },
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },

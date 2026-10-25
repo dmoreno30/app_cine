@@ -3,15 +3,14 @@
 export const CANALES = [
   { key: "facebook", label: "Facebook", icon: "ti-brand-facebook" },
   { key: "instagram", label: "Instagram", icon: "ti-brand-instagram" },
-  { key: "formularios", label: "Formularios (página web)", icon: "ti-forms" },
-  { key: "whatsapp", label: "WhatsApp", icon: "ti-brand-whatsapp" },
+  { key: "formularios", label: "Formularios del CRM", icon: "ti-forms" },
   { key: "telegram", label: "Telegram", icon: "ti-brand-telegram" },
   { key: "chatvivo", label: "Chat en vivo", icon: "ti-messages" },
   { key: "manual", label: "Creado manualmente", icon: "ti-pencil-plus" },
   { key: "tiendavirtual", label: "Tienda virtual", icon: "ti-shopping-cart" },
-  { key: "paginaweb", label: "¿Tiene página web?", icon: "ti-world" },
-  { key: "tiktok", label: "TikTok", icon: "ti-brand-tiktok" },
-  { key: "linkedin", label: "LinkedIn", icon: "ti-brand-linkedin" },
+  { key: "tiktok", label: "TikTok", icon: "ti-brand-tiktok", necesitaConector: true },
+  { key: "linkedin", label: "LinkedIn", icon: "ti-brand-linkedin", necesitaConector: true },
+  { key: "widget", label: "Widget para sitio web", icon: "ti-browser-plus", esWidget: true },
   { key: "otros", label: "Otros", icon: "ti-dots", necesitaNombre: true }
 ];
 

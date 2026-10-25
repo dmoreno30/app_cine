@@ -107,7 +107,9 @@ export function defaultState() {
     captacion: {
       intro: "",            // definición general del proceso de captación (va al iCINE)
       // Lista de canales conectados. Varios del mismo tipo permitidos.
-      canales: [],          // [{ tipo, nombre, colapsado, flujo:[{ accion, responsable, condicion, tiempo }] }]
+      canales: [],          // [{ tipo, nombre, colapsado, conector?, url?, tiempo?, flujo:[{ accion, responsable, condicion, tiempo }] }]
+      // Actividades de conexión de canales abiertos (una puede cubrir varios canales)
+      conexiones: [],       // [{ titulo, tiempo }]
       chatbot: { necesita: false, descripcion: "" }  // legacy (no se muestra)
     },
     entidadesHabilitadas,
@@ -156,6 +158,7 @@ export function loadState() {
         ...base.captacion,
         ...(parsed.captacion || {}),
         canales: Array.isArray((parsed.captacion || {}).canales) ? parsed.captacion.canales : base.captacion.canales,
+        conexiones: Array.isArray((parsed.captacion || {}).conexiones) ? parsed.captacion.conexiones : base.captacion.conexiones,
         chatbot: { ...base.captacion.chatbot, ...((parsed.captacion || {}).chatbot || {}) }
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
@@ -305,16 +308,21 @@ function buildCaptacion(cap) {
   const instancias = (cap.canales || []).map((c) => ({
     tipo: c.tipo || "otros",
     nombre: (c.nombre || "").trim(),
+    conector: (c.conector || "").trim(),
+    url: (c.url || "").trim(),
+    tiempo: (c.tiempo || "").trim(),
     flujo: (c.flujo || [])
       .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
       .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), condicion: (p.condicion || "").trim(), tiempo: (p.tiempo || "").trim() }))
   }));
-  // tipos únicos presentes (para listados de resumen)
   const tiposUnicos = [...new Set(instancias.map((c) => c.tipo))];
   return {
     intro: (cap.intro || "").trim(),
     canales: tiposUnicos,
     canalesDetalle: instancias,
+    conexiones: (cap.conexiones || [])
+      .filter((x) => (x.titulo || "").trim() || (x.tiempo || "").trim())
+      .map((x) => ({ titulo: (x.titulo || "").trim(), tiempo: (x.tiempo || "").trim() })),
     chatbot: { necesita: !!(cap.chatbot && cap.chatbot.necesita), descripcion: (cap.chatbot && cap.chatbot.descripcion || "").trim() }
   };
 }
