@@ -24,6 +24,19 @@ function validar(state) {
     const tiene = arr.some((c) => (c.titulo || "").trim() && (c.tiempo || "").trim());
     if (!tiene) faltan.push(`Capacitación (CIP) en “${ne.label}”`);
   });
+  // Proceso Comercial: requisitos específicos
+  const dp = state.desarrollos || {};
+  if (dp.proceso) {
+    if (!(state.procesoIntro || "").trim()) faltan.push("Explicación del proceso comercial completo");
+    ORDEN_ENTIDADES.forEach((key) => {
+      const cfg = ENTIDADES[key];
+      if (!cfg || cfg.type !== "pipeline") return;
+      if (!(state.entidadesHabilitadas && state.entidadesHabilitadas[key])) return;
+      const ent = (state.entidades && state.entidades[key]) || {};
+      if (!(ent.flujo || "").trim()) faltan.push(`Flujo del proceso de venta en “${cfg.label}”`);
+    });
+  }
+
   // Captación: requisitos específicos
   const d = state.desarrollos || {};
   if (d.captacion) {

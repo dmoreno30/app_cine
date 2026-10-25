@@ -78,6 +78,7 @@ function normalizar(s) {
     if (!e || typeof e !== "object") return;
     if (Array.isArray(e.etapasProgreso)) e.etapasProgreso = e.etapasProgreso.map(toStage);
     if (Array.isArray(e.etapasFallo)) e.etapasFallo = e.etapasFallo.map(toStage);
+    if (!e.exito || typeof e.exito !== "object") e.exito = { titulo: "", descripcion: "" };
     if (!Array.isArray(e.flujoPasos)) e.flujoPasos = [{ accion: "", responsable: "", herramienta: "", condicion: "" }];
     if (!Array.isArray(e.automatizaciones)) {
       e.automatizaciones = e.automatizacion ? [{ parametro: "", valor: e.automatizacion }] : [{ parametro: "", valor: "" }];

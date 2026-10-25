@@ -15,6 +15,7 @@ export function renderFieldList(entityKey, fields) {
   return `
     <div class="field-block">
       <label class="field-label">Campos personalizados</label>
+      <p class="step-helper">Los campos nativos de Bitrix24 ya se incluyen por defecto. Agrega aquí únicamente los campos personalizados que necesite el cliente.</p>
       ${rows}
       <button class="add-btn" data-add-field="${entityKey}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar campo</button>
     </div>`;

@@ -10,6 +10,7 @@ import { escapeHtml, escapeAttr } from "../utils.js";
 // porque es solo de navegación, no data del cliente.
 let expandedKey = null;
 let activeEntityTab = null;
+let rolesColapsado = false;   // permite minimizar el bloque de Roles y permisos
 
 function entidadesHabilitadasEnOrden(state) {
   return ORDEN_ENTIDADES.filter((k) => state.entidadesHabilitadas[k]);
@@ -34,8 +35,16 @@ export function renderProcesoComercialStep(state) {
 
   const formHtml = activeEntityTab ? renderEntityForm(state, activeEntityTab) : `<p class="step-helper">No hay entidades habilitadas todavía. Activá al menos una en el mapa de arriba.</p>`;
 
+  const introHtml = `
+    <div class="field-block">
+      <label class="field-label">Explicación del proceso comercial completo <span style="color:#d00">*</span></label>
+      <p class="step-helper">Describe de inicio a fin cómo funciona el proceso comercial: qué entidades intervienen, cómo se conectan y cómo fluye una oportunidad hasta el cierre.</p>
+      <textarea data-proceso-intro rows="4" placeholder="Explica el proceso comercial completo…">${escapeHtml(state.procesoIntro || "")}</textarea>
+    </div>`;
+
   return `
     ${rolesHtml}
+    ${introHtml}
     ${mapHtml}
     <div class="subtabs">${subtabsHtml}</div>
     <div id="entity-form-container">${formHtml}</div>`;
@@ -54,12 +63,12 @@ function renderEntityForm(state, key) {
     // El flujo va primero: entender la narrativa completa antes de pedir etapas sueltas.
     html += `
       <div class="field-block">
-        <label class="field-label">Flujo del proceso de venta (${cfg.label.toLowerCase()})</label>
+        <label class="field-label">Flujo del proceso de venta (${cfg.label.toLowerCase()}) <span style="color:#d00">*</span></label>
         <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="3" placeholder="Cuéntanos, en tus palabras, cómo se mueve un registro desde que entra hasta que se cierra o se descarta">${escapeHtml(data.flujo)}</textarea>
       </div>`;
-    html += renderExampleStages(key);
     html += renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso);
-    html += renderStageList(key, "etapasFallo", "Etapas de descarte (éxito ya es fija)", data.etapasFallo);
+    html += renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo);
+    html += renderExitoStage(key, data.exito || { titulo: "", descripcion: "" });
   }
 
   if (cfg.type === "pipeline") {
@@ -129,6 +138,17 @@ function renderPostventaForm(data) {
 }
 
 
+function renderExitoStage(key, exito) {
+  return `
+    <div class="field-block">
+      <label class="field-label">Etapa de cierre exitoso <span style="font-weight:400;color:var(--text-secondary)">— única, no se agregan más</span></label>
+      <div class="stage-item">
+        <input type="text" data-exito="${key}" data-exito-prop="titulo" value="${escapeAttr(exito.titulo || "")}" placeholder="Título de la etapa de éxito (ej. Venta ganada)">
+        <textarea data-exito="${key}" data-exito-prop="descripcion" rows="2" placeholder="Descripción: qué ocurre al cerrar exitosamente">${escapeHtml(exito.descripcion || "")}</textarea>
+      </div>
+    </div>`;
+}
+
 function renderPasoAPaso(key, pasos) {
   const rows = pasos.map((p, i) => `
     <div class="paso-item">
@@ -145,7 +165,7 @@ function renderPasoAPaso(key, pasos) {
     </div>`).join("");
   return `
     <div class="field-block">
-      <label class="field-label">Paso a paso del proceso <span style="font-weight:400;color:var(--text-secondary)">— la explicación detallada en pasos</span></label>
+      <label class="field-label">Ahora explica el paso a paso del proceso de prospección <span style="font-weight:400;color:var(--text-secondary)">— desde que inicia hasta su fin (cierre exitoso o fallido)</span></label>
       ${rows}
       <button class="add-btn" data-paso-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
     </div>`;
@@ -186,9 +206,13 @@ export function renderRolesCRM(state) {
   }).join("");
   return `
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;margin-bottom:16px;background:#fafafa">
-      <p class="field-label" style="font-size:15px"><i class="ti ti-users"></i> Roles y permisos en el CRM</p>
+      <p class="field-label" style="font-size:15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" data-rol-toggle>
+        <span><i class="ti ti-users"></i> Roles y permisos en el CRM</span>
+        <i class="ti ${rolesColapsado ? "ti-chevron-down" : "ti-chevron-up"}"></i>
+      </p>
+      ${rolesColapsado ? "" : `
       ${rows}
-      <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>
+      <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>`}
     </div>`;
 }
 
@@ -210,6 +234,25 @@ export function attachProcesoComercialListeners(container, state, onChange) {
     el.addEventListener("click", () => {
       activeEntityTab = el.getAttribute("data-entity-tab");
       onChange({ rerender: true });
+    });
+  });
+
+  // Explicación global del proceso comercial
+  const introEl = container.querySelector("[data-proceso-intro]");
+  if (introEl) introEl.addEventListener("input", (e) => { state.procesoIntro = e.target.value; onChange({ rerender: false }); });
+
+  // Toggle minimizar Roles y permisos
+  const rolToggle = container.querySelector("[data-rol-toggle]");
+  if (rolToggle) rolToggle.addEventListener("click", () => { rolesColapsado = !rolesColapsado; onChange({ rerender: true }); });
+
+  // Etapa de cierre exitoso (única por entidad)
+  container.querySelectorAll("[data-exito-prop]").forEach((el) => {
+    el.addEventListener("input", (e) => {
+      const key = el.getAttribute("data-exito");
+      const prop = el.getAttribute("data-exito-prop");
+      if (!state.entidades[key].exito || typeof state.entidades[key].exito !== "object") state.entidades[key].exito = { titulo: "", descripcion: "" };
+      state.entidades[key].exito[prop] = e.target.value;
+      onChange({ rerender: false });
     });
   });
 

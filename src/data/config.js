@@ -22,7 +22,7 @@ export const CANALES = [
 export const ENTIDADES = {
   prospectos: {
     label: "Prospectos", icon: "ti-users", type: "pipeline", obligatorio: false,
-    helper: "Cuéntanos cómo avanza y se pierde un prospecto en tu proceso.",
+    helper: "Define el proceso de prospección.",
     info: "Guarda a alguien que apenas mostró interés, antes de confirmar que es un cliente calificado. Si tu equipo califica leads antes de abrir una oportunidad de venta, esta entidad te sirve."
   },
   negociaciones: {

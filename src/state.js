@@ -7,6 +7,7 @@ function defaultPipelineEntity() {
   return {
     flujo: "",
     etapasProgreso: [{ nombre: "", descripcion: "" }],
+    exito: { titulo: "", descripcion: "" },   // etapa de cierre exitoso (única, no múltiple)
     etapasFallo: [{ nombre: "", descripcion: "" }],
     flujoPasos: [{ accion: "", responsable: "", herramienta: "", condicion: "" }],
     camposPersonalizados: [{ nombre: "", tipo: "Texto" }],
@@ -47,6 +48,8 @@ export function defaultState() {
 
   return {
     cliente: "",
+    // Explicación libre del proceso comercial completo (requerida, va al iCINE)
+    procesoIntro: "",
     meta: { url: "", licencia: "", consultor: "", jefeProyecto: "", version: "1.0", estado: "EN CREACIÓN" },
     ne: { descripcion: "" },
     empresa: {
@@ -372,7 +375,7 @@ export function buildCanonicalJSON(state) {
     rrhh: buildRRHH(state.rrhh),
     api: buildAPI(state.api),
     captacionDeClientes: buildCaptacion(state.captacion),
-    procesoComercial: { entidades: {}, roles: [] }
+    procesoComercial: { intro: (state.procesoIntro || "").trim(), entidades: {}, roles: [] }
   };
 
   out.procesoComercial.roles = (state.roles || [])
@@ -387,6 +390,7 @@ export function buildCanonicalJSON(state) {
       const entry = {
         flujo: (data.flujo || "").trim(),
         etapasProgreso: cleanStages(data.etapasProgreso),
+        exito: { titulo: ((data.exito && data.exito.titulo) || "").trim(), descripcion: ((data.exito && data.exito.descripcion) || "").trim() },
         etapasFallo: cleanStages(data.etapasFallo),
         flujoPasos: (data.flujoPasos || [])
           .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
