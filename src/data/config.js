@@ -7,11 +7,12 @@ export const CANALES = [
   { key: "whatsapp", label: "WhatsApp", icon: "ti-brand-whatsapp" },
   { key: "telegram", label: "Telegram", icon: "ti-brand-telegram" },
   { key: "chatvivo", label: "Chat en vivo", icon: "ti-messages" },
-  { key: "visitadirecta", label: "Visita directa", icon: "ti-door-enter" },
+  { key: "manual", label: "Creado manualmente", icon: "ti-pencil-plus" },
   { key: "tiendavirtual", label: "Tienda virtual", icon: "ti-shopping-cart" },
   { key: "paginaweb", label: "¿Tiene página web?", icon: "ti-world" },
   { key: "tiktok", label: "TikTok", icon: "ti-brand-tiktok" },
-  { key: "linkedin", label: "LinkedIn", icon: "ti-brand-linkedin" }
+  { key: "linkedin", label: "LinkedIn", icon: "ti-brand-linkedin" },
+  { key: "otros", label: "Otros", icon: "ti-dots", necesitaNombre: true }
 ];
 
 // Definición de cada entidad del Proceso Comercial.

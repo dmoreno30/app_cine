@@ -52,7 +52,7 @@ function normalizar(s) {
     api: { ...base.api, ...(s.api || {}), flujos: Array.isArray((s.api || {}).flujos) ? s.api.flujos : base.api.flujos },
     captacion: {
       ...base.captacion, ...cap,
-      canales: { ...base.captacion.canales, ...(cap.canales || {}) },
+      canales: Array.isArray(cap.canales) ? cap.canales : base.captacion.canales,
       chatbot: { ...base.captacion.chatbot, ...(cap.chatbot || {}) }
     },
     entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(s.entidadesHabilitadas || {}) },

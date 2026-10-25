@@ -25,9 +25,6 @@ function defaultPostventaEntity() {
 }
 
 export function defaultState() {
-  const canales = {};
-  CANALES.forEach((c) => { canales[c.key] = false; });
-
   const entidadesHabilitadas = {};
   const entidades = {};
   Object.keys(ENTIDADES).forEach((key) => {
@@ -108,10 +105,10 @@ export function defaultState() {
       codigoProductos: ""
     },
     captacion: {
-      canales, otros: "", distribucion: "",
-      paginawebUrl: "", tiendavirtualUrl: "",
-      flujosPorCanal: {},   // { canalKey: [{ accion, responsable, herramienta, condicion }] }
-      chatbot: { necesita: false, descripcion: "" }
+      intro: "",            // definición general del proceso de captación (va al iCINE)
+      // Lista de canales conectados. Varios del mismo tipo permitidos.
+      canales: [],          // [{ tipo, nombre, colapsado, flujo:[{ accion, responsable, condicion, tiempo }] }]
+      chatbot: { necesita: false, descripcion: "" }  // legacy (no se muestra)
     },
     entidadesHabilitadas,
     entidades,
@@ -158,8 +155,7 @@ export function loadState() {
       captacion: {
         ...base.captacion,
         ...(parsed.captacion || {}),
-        canales: { ...base.captacion.canales, ...((parsed.captacion || {}).canales || {}) },
-        flujosPorCanal: { ...base.captacion.flujosPorCanal, ...((parsed.captacion || {}).flujosPorCanal || {}) },
+        canales: Array.isArray((parsed.captacion || {}).canales) ? parsed.captacion.canales : base.captacion.canales,
         chatbot: { ...base.captacion.chatbot, ...((parsed.captacion || {}).chatbot || {}) }
       },
       entidadesHabilitadas: { ...base.entidadesHabilitadas, ...(parsed.entidadesHabilitadas || {}) },
@@ -304,6 +300,25 @@ function buildChatbot(cb) {
   };
 }
 
+function buildCaptacion(cap) {
+  cap = cap || {};
+  const instancias = (cap.canales || []).map((c) => ({
+    tipo: c.tipo || "otros",
+    nombre: (c.nombre || "").trim(),
+    flujo: (c.flujo || [])
+      .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
+      .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), condicion: (p.condicion || "").trim(), tiempo: (p.tiempo || "").trim() }))
+  }));
+  // tipos únicos presentes (para listados de resumen)
+  const tiposUnicos = [...new Set(instancias.map((c) => c.tipo))];
+  return {
+    intro: (cap.intro || "").trim(),
+    canales: tiposUnicos,
+    canalesDetalle: instancias,
+    chatbot: { necesita: !!(cap.chatbot && cap.chatbot.necesita), descripcion: (cap.chatbot && cap.chatbot.descripcion || "").trim() }
+  };
+}
+
 export function buildCanonicalJSON(state) {
   const out = {
     cliente: state.cliente.trim(),
@@ -348,24 +363,7 @@ export function buildCanonicalJSON(state) {
     chatbot: buildChatbot(state.chatbot),
     rrhh: buildRRHH(state.rrhh),
     api: buildAPI(state.api),
-    captacionDeClientes: {
-      canales: Object.keys(state.captacion.canales).filter((k) => state.captacion.canales[k]),
-      otrosCanales: state.captacion.otros.trim(),
-      distribucion: state.captacion.distribucion.trim(),
-      paginawebUrl: state.captacion.paginawebUrl.trim(),
-      tiendavirtualUrl: state.captacion.tiendavirtualUrl.trim(),
-      chatbot: {
-        necesita: !!state.captacion.chatbot.necesita,
-        descripcion: state.captacion.chatbot.descripcion.trim()
-      },
-      flujosPorCanal: Object.fromEntries(
-        Object.entries(state.captacion.flujosPorCanal || {})
-          .map(([k, pasos]) => [k, (pasos || [])
-            .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
-            .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() }))])
-          .filter(([, pasos]) => pasos.length)
-      )
-    },
+    captacionDeClientes: buildCaptacion(state.captacion),
     procesoComercial: { entidades: {}, roles: [] }
   };
 
