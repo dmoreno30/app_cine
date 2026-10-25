@@ -50,7 +50,7 @@ function defaultPipelineEntity(key) {
     etapasFallo: [{ nombre: "", descripcion: "" }],
     actividadEtapas: { descripcion: "", tiempo: "" },  // actividad: configurar las etapas (+tiempo)
     flujoPasos: [{ accion: "", responsable: "", herramienta: "", condicion: "" }],
-    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true }],
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false }],
     actividadCampos: { descripcion: "", tiempo: "" },  // actividad: crear campos / ordenar ficha (+tiempo)
     automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]
   };
@@ -63,7 +63,7 @@ function toStage(x) {
 }
 function defaultSimpleEntity() {
   return {
-    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true }],
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false }],
     actividadCampos: { descripcion: "", tiempo: "" },
     automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]  // disponible, no requerida
   };
@@ -259,7 +259,7 @@ export function resetState() {
 function cleanFields(arr) {
   return (arr || [])
     .filter((f) => (f.nombre || f.campo || "").trim())
-    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false }));
+    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio }));
 }
 function cleanActividad(a) {
   a = a || {};

@@ -9,9 +9,9 @@ export function renderFieldList(entityKey, fields) {
       <select data-field-entity="${entityKey}" data-field-prop="tipo" data-field-idx="${i}">
         ${TIPOS_CAMPO.map((t) => `<option value="${t}" ${f.tipo === t ? "selected" : ""}>${t}</option>`).join("")}
       </select>
-      <label class="checkbox-row" style="margin:0;white-space:nowrap" title="Si no se marca, es un campo nativo de Bitrix24">
-        <input type="checkbox" data-field-entity="${entityKey}" data-field-prop="personalizado" data-field-idx="${i}" ${f.personalizado !== false ? "checked" : ""}>
-        Personalizado
+      <label class="checkbox-row" style="margin:0;white-space:nowrap" title="Marca si el campo es obligatorio">
+        <input type="checkbox" data-field-entity="${entityKey}" data-field-prop="obligatorio" data-field-idx="${i}" ${f.obligatorio ? "checked" : ""}>
+        Requerido
       </label>
       <button class="icon-btn" data-remove-field="${entityKey}|${i}"><i class="ti ti-x"></i></button>
     </div>`).join("");
@@ -40,7 +40,7 @@ export function attachFieldListeners(container, state, onChange) {
   container.querySelectorAll("[data-add-field]").forEach((el) => {
     el.addEventListener("click", () => {
       const entity = el.getAttribute("data-add-field");
-      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true });
+      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false });
       onChange({ rerender: true });
     });
   });

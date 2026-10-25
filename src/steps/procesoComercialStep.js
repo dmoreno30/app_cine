@@ -42,13 +42,19 @@ export function renderProcesoComercialStep(state) {
       <textarea data-proceso-intro rows="4" placeholder="Explica el proceso comercial completo…">${escapeHtml(state.procesoIntro || "")}</textarea>
     </div>`;
 
-  const cap = (state.cip && Array.isArray(state.cip.proceso) && state.cip.proceso[0]) || { titulo: "", tiempo: "" };
+  const capList = (state.cip && Array.isArray(state.cip.proceso)) ? state.cip.proceso : [];
+  const capRows = capList.map((c, i) => `
+    <div class="row-flex">
+      <input type="text" data-pc-cap-idx="${i}" data-pc-cap-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación (ej. Uso del CRM comercial)">
+      <input type="text" data-pc-cap-idx="${i}" data-pc-cap-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 4 h)" style="max-width:150px">
+      <button class="icon-btn" data-pc-cap-remove="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
   const capHtml = `
     <div class="field-block">
       <label class="field-label"><i class="ti ti-school"></i> Capacitación del proceso comercial <span style="color:#d00">*</span></label>
-      <p class="step-helper">Una sola capacitación para todo el proceso comercial (no depende de la entidad). Se suma a la tabla de tiempos del iCINE (CIP).</p>
-      <input type="text" data-pc-cap-prop="titulo" value="${escapeAttr(cap.titulo || "")}" placeholder="Título de la capacitación (ej. Uso del CRM comercial)">
-      <input type="text" data-pc-cap-prop="tiempo" value="${escapeAttr(cap.tiempo || "")}" placeholder="Tiempo (ej. 4 h)" style="max-width:160px;margin-top:8px">
+      <p class="step-helper">Capacitaciones para todo el proceso comercial (no dependen de la entidad). Se suman a la tabla de tiempos del iCINE (CIP).</p>
+      ${capRows}
+      <button class="add-btn" data-pc-cap-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar capacitación</button>
     </div>`;
 
   return `
@@ -79,12 +85,12 @@ function renderEntityForm(state, key) {
     html += renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso);
     html += renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo);
     html += renderExitoStage(key, data.exito || { titulo: "", descripcion: "" });
-    html += renderActividad(key, "actividadEtapas", "Configurar las etapas", data.actividadEtapas);
+    html += renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, data.actividadEtapas);
     html += renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
   }
 
   html += renderFieldList(key, data.camposPersonalizados);
-  html += renderActividad(key, "actividadCampos", "Crear campos y ordenar la ficha", data.actividadCampos);
+  html += renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, data.actividadCampos);
   html += renderAutomatizaciones(key, data.automatizaciones || [], cfg.type);
 
   if (key === "cotizaciones") html += renderOrigenExternoCotizaciones(data.origenExterno);
@@ -96,9 +102,8 @@ function renderActividad(key, slot, label, act) {
   act = act || { descripcion: "", tiempo: "" };
   return `
     <div class="field-block">
-      <label class="field-label">${label} <span style="font-weight:400;color:var(--text-secondary)">— actividad y tiempo (se suma al iCINE)</span></label>
-      <textarea data-act="${key}" data-act-slot="${slot}" data-act-prop="descripcion" rows="2" placeholder="Describe la actividad…">${escapeHtml(act.descripcion || "")}</textarea>
-      <input type="text" data-act="${key}" data-act-slot="${slot}" data-act-prop="tiempo" value="${escapeAttr(act.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:160px">
+      <label class="field-label">${label} <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
+      <input type="text" data-act="${key}" data-act-slot="${slot}" data-act-prop="tiempo" value="${escapeAttr(act.tiempo || "")}" placeholder="Tiempo que tomará (ej. 2 h)" style="max-width:200px">
     </div>`;
 }
 
@@ -188,24 +193,31 @@ function renderPasoAPaso(key, pasos, label) {
 }
 
 function renderAutomatizaciones(key, autos, tipo) {
-  const opcional = tipo !== "pipeline";
+  const esPipeline = tipo === "pipeline";
   const rows = autos.map((a, i) => `
     <div class="rep-card">
       <div class="row-flex" style="align-items:flex-start">
-        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder="Disparador (ej. Creación / cambio de etapa)">
-        <button class="icon-btn" data-auto-remove="${key}|${i}"><i class="ti ti-x"></i></button>
+        ${esPipeline
+          ? `<input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder='Título (ej. "Cambio de título", recordatorios…)'>`
+          : ""}
+        <button class="icon-btn" data-auto-remove="${key}|${i}" style="margin-left:auto"><i class="ti ti-x"></i></button>
       </div>
-      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace la automatización / proceso de negocio">${escapeHtml(a.valor || "")}</textarea>
+      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace">${escapeHtml(a.valor || "")}</textarea>
       <div class="row-flex">
-        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Etapa donde se ejecuta">
+        ${esPipeline
+          ? `<input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Etapa donde se ejecuta">`
+          : ""}
         <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="tiempo" value="${escapeAttr(a.tiempo || "")}" placeholder="Tiempo (ej. 1 h)" style="max-width:150px">
       </div>
     </div>`).join("");
+  const titulo = esPipeline
+    ? `Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— título, qué hace, etapa y tiempo</span>`
+    : `Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— qué hace y tiempo (opcional)</span>`;
   return `
     <div class="field-block">
-      <label class="field-label">Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— disparador, qué hace, etapa y tiempo${opcional ? " (opcional)" : ""}</span></label>
+      <label class="field-label">${titulo}</label>
       ${rows}
-      <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar automatización</button>
+      <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar ${esPipeline ? "automatización" : "proceso"}</button>
     </div>`;
 }
 
@@ -264,14 +276,21 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   const introEl = container.querySelector("[data-proceso-intro]");
   if (introEl) introEl.addEventListener("input", (e) => { state.procesoIntro = e.target.value; onChange({ rerender: false }); });
 
-  // Capacitación (CIP) única del proceso comercial
+  // Capacitación (CIP) del proceso comercial — múltiple
+  const cipProc = () => { if (!state.cip) state.cip = {}; if (!Array.isArray(state.cip.proceso)) state.cip.proceso = []; return state.cip.proceso; };
   container.querySelectorAll("[data-pc-cap-prop]").forEach((el) => {
     el.addEventListener("input", (e) => {
-      if (!state.cip) state.cip = {};
-      if (!Array.isArray(state.cip.proceso) || !state.cip.proceso.length) state.cip.proceso = [{ titulo: "", tiempo: "" }];
-      state.cip.proceso[0][el.getAttribute("data-pc-cap-prop")] = e.target.value;
+      const i = parseInt(el.getAttribute("data-pc-cap-idx"), 10);
+      const arr = cipProc();
+      if (!arr[i]) arr[i] = { titulo: "", tiempo: "" };
+      arr[i][el.getAttribute("data-pc-cap-prop")] = e.target.value;
       onChange({ rerender: false });
     });
+  });
+  const capAdd = container.querySelector("[data-pc-cap-add]");
+  if (capAdd) capAdd.addEventListener("click", () => { cipProc().push({ titulo: "", tiempo: "" }); onChange({ rerender: true }); });
+  container.querySelectorAll("[data-pc-cap-remove]").forEach((el) => {
+    el.addEventListener("click", () => { cipProc().splice(parseInt(el.getAttribute("data-pc-cap-remove"), 10), 1); onChange({ rerender: true }); });
   });
 
   // Actividades con tiempo (configurar etapas / crear campos)
