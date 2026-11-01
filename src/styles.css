@@ -196,34 +196,100 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .paso-num { flex:0 0 auto; width:24px; height:24px; border-radius:50%; background:#056AA1; color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:4px; }
 .paso-campos { flex:1; display:flex; flex-direction:column; gap:6px; }
 
-/* ======================= Modo CLIENTE (extranet) ======================= */
-/* Interfaz más cómoda y amable para el cliente: tipografía mayor, más aire,
-   botones grandes y tarjetas de canal claras. */
-.cliente-mode .card { padding: 30px; border-radius: 16px; box-shadow: 0 2px 14px rgba(5,106,161,.06); }
-.cliente-mode .step-title { font-size: 24px; line-height: 1.25; margin-bottom: 6px; }
-.cliente-mode .step-helper { font-size: 15px; line-height: 1.55; }
-.cliente-mode .field-label { font-size: 15px; font-weight: 600; }
-.cliente-mode .field-block { margin-bottom: 18px; }
-.cliente-mode .field-block input[type="text"],
-.cliente-mode .field-block textarea,
-.cliente-mode .field-block select { font-size: 15px; padding: 12px 14px; border-radius: 10px; }
+/* ========================================================================
+   MODO CLIENTE (extranet) — tema propio, pensado para que el cliente
+   complete el formulario con comodidad. Todo va scopeado a .cliente-mode
+   para no afectar la app del desarrollador.
+   ======================================================================== */
+.cliente-mode{ --cli-ink:#1b2b33; --cli-accent:#E30D29; --cli-accent-2:#2ABDEF; }
+.cliente-mode #app{ max-width:760px; padding-top:0; }
 
-/* Barra de acciones del cliente: botones grandes */
-.cliente-mode .sesion-bar { padding: 12px 14px; border-radius: 14px; gap: 10px; }
-.cliente-mode .sesion-bar .sb-btn { font-size: 15px; padding: 12px 22px; border-radius: 12px; font-weight: 600; }
-.cliente-mode .sesion-bar .sb-btn.primary { box-shadow: 0 2px 10px rgba(5,106,161,.25); }
-.cliente-mode .sb-item { font-size: 14px; }
+/* Hero de marca */
+.cliente-mode .app-header{
+  display:block; position:relative; margin:0 -20px 24px; padding:30px 28px 26px;
+  background:linear-gradient(135deg,#0f2b3a 0%,#124a63 55%,#1594BE 100%);
+  color:#fff; border-radius:0 0 22px 22px; box-shadow:0 8px 24px rgba(16,57,78,.18);
+}
+.cliente-mode .app-header .logo-dot{ position:absolute; top:22px; right:24px; width:10px; height:10px; background:var(--ae-red); box-shadow:0 0 0 4px rgba(227,13,41,.25); }
+.cliente-mode .app-title{ font-size:26px; font-weight:700; letter-spacing:-.01em; color:#fff; }
+.cliente-mode .app-sub{ font-size:14px; color:rgba(255,255,255,.82); margin-top:4px; }
 
-/* Encabezado más presente en modo cliente */
-.cliente-mode .app-title { font-size: 24px; }
-.cliente-mode .app-sub { font-size: 14px; }
+/* Progreso (pills) más legibles y conectadas */
+.cliente-mode .stepper{ gap:8px; margin-bottom:22px; }
+.cliente-mode .step-pill{ padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; background:#fff; border:1px solid var(--border); color:var(--text-muted); }
+.cliente-mode .step-pill.active{ background:var(--cli-accent); border-color:var(--cli-accent); color:#fff; box-shadow:0 4px 12px rgba(227,13,41,.28); }
+.cliente-mode .step-pill.done{ background:#eef8fc; border-color:var(--cli-accent-2); color:var(--ae-blue-dark); }
 
-/* Botones grandes en la navegación (Anterior / Siguiente) */
-.cliente-mode .nav-btn { font-size: 15px; padding: 12px 22px; border-radius: 12px; }
+/* Tarjeta principal: aire, acento superior y sombra suave */
+.cliente-mode .card{
+  position:relative; padding:30px 30px 26px; border-radius:18px; border:1px solid #e9eef2;
+  box-shadow:0 10px 30px rgba(18,74,99,.07); overflow:hidden;
+}
+.cliente-mode .card::before{ content:""; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg,var(--cli-accent),var(--cli-accent-2)); }
+.cliente-mode .step-title{ font-size:23px; font-weight:700; letter-spacing:-.01em; color:var(--cli-ink); margin-bottom:8px; }
+.cliente-mode .step-helper{ font-size:15px; line-height:1.6; color:var(--text-secondary); }
+.cliente-mode .field-block{ margin-bottom:20px; }
+.cliente-mode .field-label{ font-size:14.5px; font-weight:600; color:var(--cli-ink); display:block; margin-bottom:7px; }
 
-/* Tarjetas de canal en Captación del cliente */
-.cli-canal-card { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; background: #fff; }
-.cli-canal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-.cli-canal-name { font-weight: 700; color: var(--ae-blue-dark, #056AA1); display: inline-flex; align-items: center; gap: 6px; }
-.cliente-mode .canal-chip { padding: 14px 10px; font-size: 13px; border-radius: 12px; }
-.cliente-mode .canal-chip i { font-size: 22px; }
+/* Campos con foco claro */
+.cliente-mode input[type="text"],
+.cliente-mode textarea,
+.cliente-mode select{
+  width:100%; font-size:15px; padding:13px 14px; border:1.5px solid #dfe6eb; border-radius:12px;
+  background:#fff; color:var(--cli-ink); transition:border-color .15s, box-shadow .15s;
+}
+.cliente-mode input[type="text"]:focus,
+.cliente-mode textarea:focus,
+.cliente-mode select:focus{ outline:none; border-color:var(--cli-accent-2); box-shadow:0 0 0 4px rgba(42,189,239,.18); }
+.cliente-mode textarea{ resize:vertical; }
+
+/* Chips de canal como mosaico */
+.cliente-mode .canal-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; }
+.cliente-mode .canal-chip{
+  padding:16px 10px; border-radius:14px; border:1.5px solid #e3e9ee; background:#fff; cursor:pointer;
+  font-size:12.5px; font-weight:600; color:var(--text-secondary); transition:transform .12s, border-color .12s, box-shadow .12s;
+}
+.cliente-mode .canal-chip i{ font-size:24px; display:block; margin-bottom:6px; color:var(--ae-blue-dark); }
+.cliente-mode .canal-chip:hover{ transform:translateY(-2px); border-color:var(--cli-accent-2); box-shadow:0 6px 16px rgba(42,189,239,.16); }
+
+/* Tarjetas de canal elegidas */
+.cliente-mode .cli-canal-list{ margin-top:16px; }
+.cliente-mode .cli-canal-card{ border:1px solid #e6edf1; border-radius:16px; background:#fff; margin-bottom:14px; box-shadow:0 3px 12px rgba(18,74,99,.05); overflow:hidden; }
+.cliente-mode .cli-canal-head{ display:flex; align-items:center; justify-content:space-between; padding:14px 16px; background:linear-gradient(90deg,#f4fafd,#ffffff); border-bottom:1px solid #eef3f6; }
+.cliente-mode .cli-canal-card.is-colapsado .cli-canal-head{ border-bottom:none; }
+.cliente-mode .cli-canal-name{ font-weight:700; color:var(--cli-ink); display:inline-flex; align-items:center; gap:8px; font-size:15px; }
+.cliente-mode .cli-canal-name i{ color:var(--ae-blue-dark); font-size:19px; }
+.cliente-mode .cli-canal-sub{ font-weight:500; color:var(--text-muted); font-size:13px; }
+.cliente-mode .cli-canal-acts{ display:flex; gap:4px; }
+.cliente-mode .cli-canal-body{ padding:16px 16px 6px; }
+.cliente-mode .icon-btn{ border:none; background:transparent; color:var(--text-muted); cursor:pointer; padding:6px; border-radius:8px; }
+.cliente-mode .icon-btn:hover{ background:#eef3f6; color:var(--cli-ink); }
+
+/* Notas (info / advertencia) */
+.cliente-mode .cli-nota{ font-size:13px; line-height:1.5; margin:6px 0 2px; padding:10px 12px; border-radius:10px; background:#eef8fc; color:#0f5c75; border:1px solid #d3ecf6; display:flex; gap:8px; }
+.cliente-mode .cli-nota--warn{ background:#fff6e9; color:#8a5a00; border-color:#ffe2b0; }
+.cliente-mode .cli-nota i{ font-size:16px; flex:0 0 auto; margin-top:1px; }
+
+/* Barra de acciones fija abajo, botones grandes */
+.cliente-mode .sesion-bar{
+  position:sticky; bottom:0; z-index:5; margin:18px -20px 0; padding:14px 20px;
+  background:rgba(255,255,255,.92); backdrop-filter:blur(6px); border:none; border-top:1px solid #e6edf1; border-radius:0;
+  display:flex; align-items:center; gap:12px;
+}
+.cliente-mode .sb-item{ font-size:14px; color:var(--text-secondary); margin-right:auto; }
+.cliente-mode .sb-btn{ font-size:15px; font-weight:600; padding:13px 24px; border-radius:12px; border:1.5px solid #d7dfe4; background:#fff; }
+.cliente-mode .sb-btn.primary{ background:linear-gradient(135deg,var(--cli-accent),#ff4d63); border-color:var(--cli-accent); color:#fff; box-shadow:0 6px 16px rgba(227,13,41,.28); }
+.cliente-mode .sb-btn[disabled]{ opacity:.5; cursor:not-allowed; box-shadow:none; }
+.cliente-mode .sb-btn:not([disabled]):hover{ transform:translateY(-1px); }
+
+/* Navegación anterior/siguiente */
+.cliente-mode .nav-row{ display:flex; gap:10px; margin-top:18px; }
+.cliente-mode .nav-btn{ font-size:15px; font-weight:600; padding:13px 24px; border-radius:12px; border:1.5px solid #d7dfe4; background:#fff; cursor:pointer; }
+.cliente-mode .nav-btn.primary{ background:#124a63; border-color:#124a63; color:#fff; }
+.cliente-mode .nav-btn:not([disabled]):hover{ filter:brightness(1.03); }
+
+/* Lista de formularios (landing del cliente) */
+.cliente-mode .ini-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:16px; border:1px solid #e6edf1; border-radius:14px; margin-bottom:10px; background:#fff; box-shadow:0 2px 8px rgba(18,74,99,.04); }
+
+/* Selección de necesidades (tarjetas) un poco más amables */
+.cliente-mode .sel-card{ border-radius:14px; }

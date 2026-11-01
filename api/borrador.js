@@ -57,10 +57,10 @@ function armarFields(b) {
   if (b.jefeId) f[PROP_JEFE] = String(b.jefeId);
   if (b.desarrolladorId) f[PROP_DESARROLLADOR] = String(b.desarrolladorId);
   f[PROP_JSON] = JSON.stringify(b.borrador || {});
-  // Las propiedades de tipo LISTA se envían como arreglo de IDs del valor (ver doc lists.element.add).
-  f[PROP_TIPO] = [TIPO[b.tipo] || TIPO.icine];
-  f[PROP_STATUS] = [STATUS[b.status] || STATUS.borrador];
-  // Estado de formulario: solo se escribe cuando se indica explícitamente,
+  f[PROP_TIPO] = TIPO[b.tipo] || TIPO.icine;
+  f[PROP_STATUS] = STATUS[b.status] || STATUS.borrador;
+  // Estado de formulario (campo de tipo lista): se envía como arreglo de IDs del valor
+  // (ver doc lists.element.add). Solo se escribe cuando se indica explícitamente,
   // para no pisarlo en guardados normales del desarrollador.
   if (b.formStatus && FORM[b.formStatus]) f[PROP_FORM] = [FORM[b.formStatus]];
   return f;
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
       // Guardado del cliente (extranet): solo toca el JSON y respeta el bloqueo.
       if (b.origen === "cliente") {
-        const fs = await leerFormStatus(b.elementId);
+        let fs = ""; try { fs = await leerFormStatus(b.elementId); } catch (e) { fs = ""; } // una lectura con error no debe bloquear el guardado
         if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado y no se puede editar." });
         await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}) } });
         return res.json({ ok: true, elementId: b.elementId, formStatus: fs || "pendiente" });
@@ -145,7 +145,8 @@ export default async function handler(req, res) {
     }
     return res.status(400).json({ ok: false, mensaje: "Acción no reconocida." });
   } catch (err) {
-    console.error("borrador.js error:", err.message);
-    return res.status(500).json({ ok: false, mensaje: "No se pudo conectar con Bitrix24." });
+    console.error("borrador.js error:", err && err.message);
+    // Devolvemos el detalle real de Bitrix para poder diagnosticar en vez de un mensaje genérico.
+    return res.status(500).json({ ok: false, mensaje: "Bitrix: " + ((err && err.message) || "error desconocido") });
   }
 }
