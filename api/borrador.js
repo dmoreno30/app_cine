@@ -14,9 +14,12 @@ const PROP_JEFE          = "PROPERTY_2399"; // Jefe de proyecto = propietario de
 const PROP_JSON          = "PROPERTY_2400"; // respuestas (JSON del borrador)
 const PROP_STATUS        = "PROPERTY_2401"; // Status (lista)
 const PROP_DESARROLLADOR = "PROPERTY_2403"; // Desarrollador = usuario actual (nuevo)
+const PROP_FORM          = "PROPERTY_2411"; // Estado del formulario del cliente (lista)
 
 const TIPO = { icine: "3099", t24: "3100" };
 const STATUS = { borrador: "3101", desarrollo: "3102" };
+const FORM = { pendiente: "3128", enviado: "3129" }; // estado del formulario (extranet)
+function formKey(code) { return code === FORM.enviado ? "enviado" : (code === FORM.pendiente ? "pendiente" : ""); }
 
 async function callBitrix(method, params) {
   if (!WEBHOOK) throw new Error("Falta BITRIX_WEBHOOK");
@@ -43,7 +46,16 @@ function armarFields(b) {
   f[PROP_JSON] = JSON.stringify(b.borrador || {});
   f[PROP_TIPO] = TIPO[b.tipo] || TIPO.icine;
   f[PROP_STATUS] = STATUS[b.status] || STATUS.borrador;
+  // Estado de formulario: solo se escribe cuando se indica explícitamente,
+  // para no pisarlo en guardados normales del desarrollador.
+  if (b.formStatus && FORM[b.formStatus]) f[PROP_FORM] = FORM[b.formStatus];
   return f;
+}
+// Lee el estado de formulario actual de un elemento (o "" si no es formulario).
+async function leerFormStatus(elementId) {
+  const r = await callBitrix("lists.element.get", { IBLOCK_TYPE_ID, IBLOCK_ID, FILTER: { ID: elementId }, SELECT: ["ID", PROP_FORM] });
+  const el = Array.isArray(r) ? r[0] : (r && Object.values(r)[0]);
+  return el ? formKey(val(el[PROP_FORM])) : "";
 }
 
 export default async function handler(req, res) {
@@ -66,15 +78,43 @@ export default async function handler(req, res) {
       }));
       return res.json({ ok: true, items });
     }
+    // Formularios del proyecto (vista del cliente extranet): solo registros con formulario.
+    if (b.action === "listForms") {
+      if (!b.proyectoId) return res.status(400).json({ ok: false, mensaje: "Falta proyectoId." });
+      const FILTER = { ["=" + PROP_PROYECTO]: String(b.proyectoId) };
+      const r = await callBitrix("lists.element.get", { IBLOCK_TYPE_ID, IBLOCK_ID, FILTER, SELECT: ["ID", "NAME", PROP_NE_TEXTO, PROP_FORM] });
+      const items = (Array.isArray(r) ? r : Object.values(r || {}))
+        .map((el) => ({ id: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]), formStatus: formKey(val(el[PROP_FORM])) }))
+        .filter((x) => x.formStatus); // solo los que tienen formulario habilitado
+      return res.json({ ok: true, items });
+    }
     if (b.action === "create") {
       if (!b.proyectoId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del proyecto." });
-      const newId = await callBitrix("lists.element.add", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_CODE: `dev_${Date.now()}`, FIELDS: armarFields({ ...b, status: "borrador" }) });
+      // Si se crea "Formulario + iCINE", el formulario nace en estado pendiente.
+      const fields = armarFields({ ...b, status: "borrador", formStatus: b.conFormulario ? "pendiente" : null });
+      const newId = await callBitrix("lists.element.add", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_CODE: `dev_${Date.now()}`, FIELDS: fields });
       return res.json({ ok: true, elementId: newId });
     }
     if (b.action === "save") {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
+      // Guardado del cliente (extranet): solo toca el JSON y respeta el bloqueo.
+      if (b.origen === "cliente") {
+        const fs = await leerFormStatus(b.elementId);
+        if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado y no se puede editar." });
+        await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}) } });
+        return res.json({ ok: true, elementId: b.elementId, formStatus: fs || "pendiente" });
+      }
+      // Guardado del desarrollador: no toca PROP_FORM (se preserva).
       await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: armarFields(b) });
       return res.json({ ok: true, elementId: b.elementId });
+    }
+    // Envío final del cliente: consolida el JSON y bloquea (enviado).
+    if (b.action === "enviar") {
+      if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
+      const fs = await leerFormStatus(b.elementId);
+      if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado." });
+      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}), [PROP_FORM]: FORM.enviado } });
+      return res.json({ ok: true, elementId: b.elementId, formStatus: "enviado" });
     }
     if (b.action === "load") {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
@@ -85,7 +125,8 @@ export default async function handler(req, res) {
       return res.json({ ok: true, elementId: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]),
         proyectoId: val(el[PROP_PROYECTO]),
         tipo: val(el[PROP_TIPO]) === TIPO.t24 ? "t24" : "icine",
-        status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador", borrador: draft });
+        status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador",
+        formStatus: formKey(val(el[PROP_FORM])), borrador: draft });
     }
     return res.status(400).json({ ok: false, mensaje: "Acción no reconocida." });
   } catch (err) {

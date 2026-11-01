@@ -13,17 +13,19 @@ import { renderRRHHStep, attachRRHHListeners } from "./steps/rrhhStep.js";
 import { renderAPIStep, attachAPIListeners } from "./steps/apiStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 import { initBitrix, obtenerContextoBX, enBitrix } from "./bitrix.js";
-import { listarDesarrollos, crearDesarrollo, cargarDesarrollo, guardarDesarrollo } from "./apiCliente.js";
+import { listarDesarrollos, crearDesarrollo, cargarDesarrollo, guardarDesarrollo, listarFormularios, guardarFormularioBorrador, enviarFormulario } from "./apiCliente.js";
 import { escapeHtml, escapeAttr } from "./utils.js";
 
 let state = normalizar(resetState());
 let currentStep = 0;
-let vista = "inicio";            // "inicio" | "form"
+let vista = "inicio";            // "inicio" | "form" | "cliente"
 let cargando = true;
 const devProy = new URLSearchParams(window.location.search).get("proyecto"); // fallback de prueba
+// Fuerza modo cliente en pruebas fuera de Bitrix: ?modo=cliente
+const devModo = new URLSearchParams(window.location.search).get("modo");
 
-const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null };
-const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "" };
+const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null, esExtranet: false };
+const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "", conFormulario: false, modoCliente: false, formStatus: "", formularios: [] };
 
 function normalizar(s) {
   const base = defaultState();
@@ -104,7 +106,7 @@ function datosComunes() {
   return {
     proyectoId: ctx.proyectoId, proyectoNombre: ctx.proyectoNombre,
     jefeId: ctx.jefeId, desarrolladorId: ctx.usuario && ctx.usuario.id,
-    neTexto: sesion.neTexto, tipo: sesion.tipo, borrador: state
+    neTexto: sesion.neTexto, tipo: sesion.tipo, conFormulario: sesion.conFormulario, borrador: state
   };
 }
 async function refrescarLista() {
@@ -112,9 +114,10 @@ async function refrescarLista() {
   const r = await listarDesarrollos(ctx.proyectoId);
   sesion.lista = (r && r.ok) ? r.items : [];
 }
-async function crear(neTexto, tipo) {
+async function crear(neTexto, tipo, conFormulario) {
   if (!ctx.proyectoId) { setStatus("No se detectó el proyecto."); return; }
   sesion.neTexto = neTexto; sesion.tipo = tipo || "icine";
+  sesion.conFormulario = !!conFormulario; sesion.modoCliente = false; sesion.formStatus = "";
   state = normalizar(resetState());
   aplicarMetaContexto();
   setStatus("Creando…");
@@ -129,6 +132,7 @@ async function continuar(elementId) {
     state = normalizar(r.borrador || {});
     aplicarMetaContexto();
     sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
+    sesion.modoCliente = false; sesion.formStatus = r.formStatus || "";
     vista = "form"; currentStep = 0; setStatus("Editando #" + r.elementId); render();
   } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
 }
@@ -138,7 +142,43 @@ async function guardar() {
   const r = await guardarDesarrollo({ elementId: sesion.elementId, ...datosComunes() });
   setStatus(r && r.ok ? "Guardado ✓" : "Error: " + ((r && r.mensaje) || "no se pudo"));
 }
-function volverInicio() { vista = "inicio"; sesion.elementId = null; refrescarLista().then(render); }
+function volverInicio() {
+  if (sesion.modoCliente || ctx.esExtranet) { vista = "cliente"; sesion.elementId = null; refrescarFormularios().then(render); return; }
+  vista = "inicio"; sesion.elementId = null; refrescarLista().then(render);
+}
+
+/* ---------------- MODO CLIENTE (extranet) ---------------- */
+async function refrescarFormularios() {
+  if (!ctx.proyectoId) { sesion.formularios = []; return; }
+  const r = await listarFormularios(ctx.proyectoId);
+  sesion.formularios = (r && r.ok) ? r.items : [];
+}
+async function abrirFormulario(elementId) {
+  setStatus("Cargando…");
+  const r = await cargarDesarrollo(elementId);
+  if (r && r.ok) {
+    state = normalizar(r.borrador || {});
+    sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
+    sesion.modoCliente = true; sesion.formStatus = r.formStatus || "pendiente";
+    vista = "form"; currentStep = 0; setStatus(""); render();
+  } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
+}
+async function guardarBorradorCliente() {
+  if (!sesion.elementId) return;
+  if (sesion.formStatus === "enviado") return;
+  setStatus("Guardando…");
+  const r = await guardarFormularioBorrador({ elementId: sesion.elementId, borrador: state });
+  setStatus(r && r.ok ? "Borrador guardado ✓" : "Error: " + ((r && r.mensaje) || "no se pudo"));
+}
+async function enviarCliente() {
+  if (!sesion.elementId) return;
+  if (sesion.formStatus === "enviado") return;
+  if (!window.confirm("Al enviar, el formulario quedará bloqueado y ya no podrás editarlo. ¿Enviar ahora?")) return;
+  setStatus("Enviando…");
+  const r = await enviarFormulario({ elementId: sesion.elementId, borrador: state });
+  if (r && r.ok) { sesion.formStatus = "enviado"; setStatus("Formulario enviado ✓"); render(); }
+  else setStatus("Error: " + ((r && r.mensaje) || "no se pudo enviar"));
+}
 function onChange(result = {}) { if (result.reset) { volverInicio(); return; } if (result.rerender) render(); }
 
 /* ---------------- PANTALLA DE INICIO ---------------- */
@@ -163,11 +203,43 @@ function renderInicio() {
     <div class="ini-lista">${filas}</div>
     <hr style="margin:18px 0;border:none;border-top:1px solid #eee">
     <p class="field-label">Crear un nuevo desarrollo</p>
-    <input type="text" data-ne-texto placeholder="Nombre de las NE (ej. Proceso comercial - chatbot - reportes)">
-    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
-      <select data-tipo><option value="icine">iCINE</option><option value="t24">T24</option></select>
+    <input type="text" data-ne-texto placeholder="Título del desarrollo (ej. Proceso comercial - chatbot - reportes)">
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+      <select data-tipo title="Tipo de implementación">
+        <option value="icine">iCINE</option>
+        <option value="t24" disabled>T24 (próximamente)</option>
+      </select>
+      <select data-modo title="¿Generar formulario para el cliente?">
+        <option value="solo">Solo iCINE</option>
+        <option value="form">Formulario + iCINE</option>
+      </select>
       <button class="sb-btn primary" data-crear><i class="ti ti-plus"></i> Crear</button>
     </div>
+    <p class="step-helper" style="margin-top:6px">"Formulario + iCINE" habilita el formulario que el cliente (extranet) llenará; luego sus respuestas se cargan aquí.</p>
+  </div>`;
+}
+
+/* ---------------- PANTALLA DE INICIO (CLIENTE / EXTRANET) ---------------- */
+function renderCliente() {
+  if (cargando) return `<div class="card"><p>Cargando…</p></div>`;
+  if (!ctx.proyectoId) {
+    return `<div class="card"><p class="step-title">No se detectó el proyecto</p>
+      <p class="step-helper">Abre esta aplicación dentro de tu proyecto en Bitrix24.</p></div>`;
+  }
+  const filas = sesion.formularios.length
+    ? sesion.formularios.map((f) => `
+        <div class="ini-row">
+          <div><b>${escapeHtml(f.neTexto || f.nombre || "Formulario")}</b> <span style="color:#888">#${f.id}</span>
+            ${f.formStatus === "enviado"
+              ? '<span style="color:#1a7f37;font-size:12px"> · Enviado</span>'
+              : '<span style="color:#8a5a00;font-size:12px"> · Pendiente</span>'}</div>
+          <button class="sb-btn primary" data-abrir-form="${f.id}">${f.formStatus === "enviado" ? "Ver" : "Llenar"}</button>
+        </div>`).join("")
+    : `<p style="color:#888">No hay formularios asignados para este proyecto todavía.</p>`;
+  return `<div class="card">
+    <p class="step-title">Formularios para completar</p>
+    <p class="step-helper">Proyecto: <b>${escapeHtml(ctx.proyectoNombre || "")}</b>. Completa la información de tu necesidad; puedes guardar un borrador y volver más tarde. Al enviar, queda bloqueado.</p>
+    <div class="ini-lista">${filas}</div>
   </div>`;
 }
 
@@ -179,15 +251,23 @@ function render() {
     app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
     const cr = app.querySelector("[data-crear]");
     if (cr) cr.addEventListener("click", () => {
-      const t = app.querySelector("[data-ne-texto]"); const tp = app.querySelector("[data-tipo]");
-      crear((t && t.value.trim()) || "Desarrollo", tp && tp.value);
+      const t = app.querySelector("[data-ne-texto]"); const tp = app.querySelector("[data-tipo]"); const md = app.querySelector("[data-modo]");
+      crear((t && t.value.trim()) || "Desarrollo", tp && tp.value, md && md.value === "form");
     });
     app.querySelectorAll("[data-continuar]").forEach((el) => el.addEventListener("click", () => continuar(el.getAttribute("data-continuar"))));
     return;
   }
 
+  if (vista === "cliente") {
+    app.innerHTML = `${renderHeader()}${renderCliente()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
+    app.querySelectorAll("[data-abrir-form]").forEach((el) => el.addEventListener("click", () => abrirFormulario(el.getAttribute("data-abrir-form"))));
+    return;
+  }
+
   // vista === "form"
-  const pasos = getPasos(state);
+  const modoCliente = !!sesion.modoCliente;
+  const bloqueado = modoCliente && sesion.formStatus === "enviado";
+  const pasos = getPasos(state).filter((p) => !(modoCliente && p.key === "confirmacion"));
   if (currentStep > pasos.length - 1) currentStep = pasos.length - 1;
   const stepKey = pasos[currentStep].key;
   let bodyHtml = "";
@@ -202,9 +282,9 @@ function render() {
   else if (stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, false);
 
-  // Campo "Consideraciones" al final de cada NE (se agrega al iCINE al cerrar la NE)
+  // Campo "Consideraciones" + Capacitación: solo para el desarrollador, no en modo cliente.
   const NE_CONS = { captacion: "captacion", proceso: "proceso", reporteria: "reporteria", chatbot: "chatbot", api: "api", app: "app", rrhh: "rrhh" };
-  if (NE_CONS[stepKey]) {
+  if (!modoCliente && NE_CONS[stepKey]) {
     const ck = NE_CONS[stepKey];
     if (!state.cip) state.cip = {};
     if (!Array.isArray(state.cip[ck])) state.cip[ck] = [];
@@ -234,26 +314,41 @@ function render() {
       </div>`;
   }
 
+  const accionesBar = modoCliente
+    ? `<button class="sb-btn" data-cli-borrador ${bloqueado ? "disabled" : ""}><i class="ti ti-device-floppy"></i> Guardar borrador</button>
+       <button class="sb-btn primary" data-cli-enviar ${bloqueado ? "disabled" : ""}><i class="ti ti-send"></i> Enviar</button>`
+    : `<button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
   const barra = `<div class="sesion-bar">
-    <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> Inicio</button>
+    <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> ${modoCliente ? "Mis formularios" : "Inicio"}</button>
     <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>
-    <button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>
+    ${accionesBar}
     <span id="sesion-status" class="sb-status">${sesion.status}</span>
   </div>`;
 
+  const bannerBloqueo = bloqueado
+    ? `<div class="aviso" style="background:#fff4e5;border:1px solid #ffd59e;color:#8a5a00;padding:10px 12px;border-radius:8px;margin-bottom:12px"><i class="ti ti-lock"></i> Este formulario ya fue enviado y está en solo lectura.</div>`
+    : "";
+
   app.innerHTML = `${renderHeader()}${barra}
     <div class="stepper">${renderStepper(currentStep, pasos)}</div>
-    <div class="card">${bodyHtml}</div>
+    <div class="card">${bannerBloqueo}${bodyHtml}</div>
     <div class="nav-row">
       <button class="nav-btn" data-nav="prev" ${currentStep === 0 ? "disabled" : ""}>Anterior</button>
-      ${stepKey === "confirmacion" ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
+      ${currentStep >= pasos.length - 1 ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
     </div>${renderFooter()}`;
 
   app.querySelector("[data-volver]").addEventListener("click", volverInicio);
-  app.querySelector("[data-guardar]").addEventListener("click", guardar);
+  const gBtn = app.querySelector("[data-guardar]"); if (gBtn) gBtn.addEventListener("click", guardar);
+  const cbBtn = app.querySelector("[data-cli-borrador]"); if (cbBtn) cbBtn.addEventListener("click", guardarBorradorCliente);
+  const ceBtn = app.querySelector("[data-cli-enviar]"); if (ceBtn) ceBtn.addEventListener("click", enviarCliente);
   attachStepperListeners(app, (i) => { currentStep = i; render(); });
   const prev = app.querySelector('[data-nav="prev"]'); if (prev) prev.addEventListener("click", () => { currentStep = Math.max(0, currentStep - 1); render(); });
-  const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { currentStep = Math.min(getPasos(state).length - 1, currentStep + 1); render(); });
+  const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { currentStep = Math.min(pasos.length - 1, currentStep + 1); render(); });
+
+  // Modo cliente bloqueado: deshabilitar toda entrada del formulario (menos la navegación).
+  if (bloqueado) {
+    app.querySelectorAll(".card input, .card textarea, .card select, .card button").forEach((el) => { el.disabled = true; });
+  }
 
   // listener del campo Consideraciones (si está presente)
   const cons = app.querySelector("[data-consideraciones]");
@@ -300,7 +395,13 @@ async function init() {
   ctx.jefeId = c.jefeId || "";
   ctx.jefeNombre = c.jefeNombre || "";
   ctx.usuario = c.usuario || null;
-  await refrescarLista();
+  ctx.esExtranet = !!c.esExtranet || devModo === "cliente";
+  if (ctx.esExtranet) {
+    vista = "cliente";
+    await refrescarFormularios();
+  } else {
+    await refrescarLista();
+  }
   cargando = false;
   render();
 }

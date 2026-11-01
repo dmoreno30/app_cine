@@ -13,3 +13,7 @@ export const listarDesarrollos = (proyectoId) => apiBorrador({ action: "list", p
 export const crearDesarrollo = (d) => apiBorrador({ action: "create", ...d });
 export const cargarDesarrollo = (elementId) => apiBorrador({ action: "load", elementId });
 export const guardarDesarrollo = (d) => apiBorrador({ action: "save", ...d });
+// Formulario del cliente (extranet)
+export const listarFormularios = (proyectoId) => apiBorrador({ action: "listForms", proyectoId });
+export const guardarFormularioBorrador = (d) => apiBorrador({ action: "save", origen: "cliente", ...d });
+export const enviarFormulario = (d) => apiBorrador({ action: "enviar", ...d });

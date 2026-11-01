@@ -18,7 +18,7 @@ function call(method, params) {
   });
 }
 export async function obtenerContextoBX() {
-  if (!enBitrix()) return { proyectoId: null, usuario: null, proyectoNombre: "", jefeId: "" };
+  if (!enBitrix()) return { proyectoId: null, usuario: null, proyectoNombre: "", jefeId: "", esExtranet: false };
   let proyectoId = null;
   try {
     const info = window.BX24.placement.info() || {};
@@ -28,6 +28,19 @@ export async function obtenerContextoBX() {
 
   const u = await call("user.current", {});
   const usuario = u ? { id: u.ID, nombre: `${u.NAME || ""} ${u.LAST_NAME || ""}`.trim() } : null;
+
+  // Extranet: USER_TYPE === "extranet". user.current no siempre lo trae,
+  // así que si falta lo consultamos con user.get por ID.
+  let esExtranet = false;
+  try {
+    let userType = u && u.USER_TYPE;
+    if (userType === undefined && u && u.ID) {
+      const ug = await call("user.get", { FILTER: { ID: u.ID } });
+      const uu = Array.isArray(ug) ? ug[0] : (ug && Object.values(ug)[0]);
+      userType = uu && uu.USER_TYPE;
+    }
+    esExtranet = String(userType || "").toLowerCase() === "extranet";
+  } catch (e) { esExtranet = false; }
 
   let proyectoNombre = "", jefeId = "", jefeNombre = "";
   if (proyectoId) {
@@ -40,5 +53,5 @@ export async function obtenerContextoBX() {
       if (j) jefeNombre = `${j.NAME || ""} ${j.LAST_NAME || ""}`.trim();
     }
   }
-  return { proyectoId, usuario, proyectoNombre, jefeId, jefeNombre };
+  return { proyectoId, usuario, proyectoNombre, jefeId, jefeNombre, esExtranet };
 }
