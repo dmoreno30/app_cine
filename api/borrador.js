@@ -19,7 +19,15 @@ const PROP_FORM          = "PROPERTY_2411"; // Estado del formulario del cliente
 const TIPO = { icine: "3099", t24: "3100" };
 const STATUS = { borrador: "3101", desarrollo: "3102" };
 const FORM = { pendiente: "3128", enviado: "3129" }; // estado del formulario (extranet)
-function formKey(code) { return code === FORM.enviado ? "enviado" : (code === FORM.pendiente ? "pendiente" : ""); }
+// Tolerante: Bitrix Listas puede devolver el CÓDIGO (3128/3129) o el TEXTO del valor
+// ("pendiente" / "enviado-bloqueado"), según el campo. Normalizamos ambos.
+function formKey(raw) {
+  const s = String(raw == null ? "" : raw).trim().toLowerCase();
+  if (!s) return "";
+  if (s === FORM.enviado || s.includes("envi") || s.includes("bloque")) return "enviado";
+  if (s === FORM.pendiente || s.includes("pend")) return "pendiente";
+  return "";
+}
 
 async function callBitrix(method, params) {
   if (!WEBHOOK) throw new Error("Falta BITRIX_WEBHOOK");
@@ -31,8 +39,13 @@ async function callBitrix(method, params) {
 }
 function val(p) {
   if (p == null) return "";
-  if (typeof p === "string") return p;
-  if (typeof p === "object") { const v = Object.values(p); return v.length ? v[0] : ""; }
+  if (typeof p === "string" || typeof p === "number") return String(p);
+  if (typeof p === "object") {
+    const v = Object.values(p);
+    let first = v.length ? v[0] : "";
+    if (first && typeof first === "object") { const vv = Object.values(first); first = vv.length ? vv[0] : ""; }
+    return first == null ? "" : String(first);
+  }
   return "";
 }
 // Set COMPLETO de campos (update en Listas reemplaza todo).
