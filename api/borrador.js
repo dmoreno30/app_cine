@@ -70,11 +70,12 @@ export default async function handler(req, res) {
       if (!b.proyectoId) return res.status(400).json({ ok: false, mensaje: "Falta proyectoId." });
       const FILTER = { ["=" + PROP_PROYECTO]: String(b.proyectoId) };
       if (b.soloBorradores !== false) FILTER["=" + PROP_STATUS] = STATUS.borrador;
-      const r = await callBitrix("lists.element.get", { IBLOCK_TYPE_ID, IBLOCK_ID, FILTER, SELECT: ["ID", "NAME", PROP_NE_TEXTO, PROP_TIPO, PROP_STATUS] });
+      const r = await callBitrix("lists.element.get", { IBLOCK_TYPE_ID, IBLOCK_ID, FILTER, SELECT: ["ID", "NAME", PROP_NE_TEXTO, PROP_TIPO, PROP_STATUS, PROP_FORM] });
       const items = (Array.isArray(r) ? r : Object.values(r || {})).map((el) => ({
         id: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]),
         tipo: val(el[PROP_TIPO]) === TIPO.t24 ? "t24" : "icine",
-        status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador"
+        status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador",
+        formStatus: formKey(val(el[PROP_FORM]))
       }));
       return res.json({ ok: true, items });
     }

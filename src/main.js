@@ -3,6 +3,7 @@ import { getPasos, renderStepper, attachStepperListeners } from "./components/st
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
 import { renderNEStep, attachNEListeners } from "./steps/neStep.js";
+import { renderClienteEmpresa, attachClienteEmpresa } from "./steps/clienteEmpresaStep.js";
 import { renderSeleccionStep, attachSeleccionListeners } from "./steps/seleccionStep.js";
 import { renderCaptacionStep, attachCaptacionListeners } from "./steps/captacionStep.js";
 import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./steps/procesoComercialStep.js";
@@ -143,8 +144,9 @@ async function guardar() {
   setStatus(r && r.ok ? "Guardado ✓" : "Error: " + ((r && r.mensaje) || "no se pudo"));
 }
 function volverInicio() {
-  if (sesion.modoCliente || ctx.esExtranet) { vista = "cliente"; sesion.elementId = null; refrescarFormularios().then(render); return; }
-  vista = "inicio"; sesion.elementId = null; refrescarLista().then(render);
+  sesion.elementId = null; sesion.modoCliente = false;
+  if (ctx.esExtranet) { vista = "cliente"; refrescarFormularios().then(render); return; }
+  vista = "inicio"; refrescarLista().then(render);
 }
 
 /* ---------------- MODO CLIENTE (extranet) ---------------- */
@@ -191,11 +193,19 @@ function renderInicio() {
     </div>`;
   }
   const filas = sesion.lista.length
-    ? sesion.lista.map((d) => `
-        <div class="ini-row">
-          <div><b>${escapeHtml(d.neTexto || d.nombre || "Sin nombre")}</b> <span style="color:#888">#${d.id}</span></div>
-          <button class="sb-btn primary" data-continuar="${d.id}">Continuar</button>
-        </div>`).join("")
+    ? sesion.lista.map((d) => {
+        const tieneForm = d.formStatus === "pendiente" || d.formStatus === "enviado";
+        const estadoForm = d.formStatus === "enviado" ? '<span style="color:#1a7f37;font-size:12px"> · Formulario enviado</span>'
+          : d.formStatus === "pendiente" ? '<span style="color:#8a5a00;font-size:12px"> · Formulario pendiente</span>' : "";
+        const botones = tieneForm
+          ? `<button class="sb-btn" data-abrir-form="${d.id}"><i class="ti ti-forms"></i> Formulario</button>
+             <button class="sb-btn primary" data-continuar="${d.id}"><i class="ti ti-file-text"></i> iCINE</button>`
+          : `<button class="sb-btn primary" data-continuar="${d.id}">Continuar</button>`;
+        return `<div class="ini-row">
+          <div><b>${escapeHtml(d.neTexto || d.nombre || "Sin nombre")}</b> <span style="color:#888">#${d.id}</span>${estadoForm}</div>
+          <div style="display:flex;gap:6px">${botones}</div>
+        </div>`;
+      }).join("")
     : `<p style="color:#888">No hay desarrollos en curso para este proyecto.</p>`;
   return `<div class="card">
     <p class="step-title">Desarrollos del proyecto</p>
@@ -205,17 +215,14 @@ function renderInicio() {
     <p class="field-label">Crear un nuevo desarrollo</p>
     <input type="text" data-ne-texto placeholder="Título del desarrollo (ej. Proceso comercial - chatbot - reportes)">
     <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-      <select data-tipo title="Tipo de implementación">
-        <option value="icine">iCINE</option>
-        <option value="t24" disabled>T24 (próximamente)</option>
-      </select>
-      <select data-modo title="¿Generar formulario para el cliente?">
-        <option value="solo">Solo iCINE</option>
-        <option value="form">Formulario + iCINE</option>
+      <select data-crear-modo title="¿Qué deseas crear?">
+        <option value="icine">Crear iCINE</option>
+        <option value="form">Crear Formulario + iCINE</option>
+        <option value="form-t24" disabled>Crear Formulario para T24 (próximamente)</option>
       </select>
       <button class="sb-btn primary" data-crear><i class="ti ti-plus"></i> Crear</button>
     </div>
-    <p class="step-helper" style="margin-top:6px">"Formulario + iCINE" habilita el formulario que el cliente (extranet) llenará; luego sus respuestas se cargan aquí.</p>
+    <p class="step-helper" style="margin-top:6px">"Formulario + iCINE" habilita el formulario que el cliente (extranet) llenará; luego, como desarrollador, abres el iCINE o el formulario desde la lista.</p>
   </div>`;
 }
 
@@ -251,10 +258,14 @@ function render() {
     app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
     const cr = app.querySelector("[data-crear]");
     if (cr) cr.addEventListener("click", () => {
-      const t = app.querySelector("[data-ne-texto]"); const tp = app.querySelector("[data-tipo]"); const md = app.querySelector("[data-modo]");
-      crear((t && t.value.trim()) || "Desarrollo", tp && tp.value, md && md.value === "form");
+      const t = app.querySelector("[data-ne-texto]"); const md = app.querySelector("[data-crear-modo]");
+      const modo = (md && md.value) || "icine";
+      const tipo = modo === "form-t24" ? "t24" : "icine";
+      const conFormulario = modo === "form" || modo === "form-t24";
+      crear((t && t.value.trim()) || "Desarrollo", tipo, conFormulario);
     });
     app.querySelectorAll("[data-continuar]").forEach((el) => el.addEventListener("click", () => continuar(el.getAttribute("data-continuar"))));
+    app.querySelectorAll("[data-abrir-form]").forEach((el) => el.addEventListener("click", () => abrirFormulario(el.getAttribute("data-abrir-form"))));
     return;
   }
 
@@ -271,7 +282,7 @@ function render() {
   if (currentStep > pasos.length - 1) currentStep = pasos.length - 1;
   const stepKey = pasos[currentStep].key;
   let bodyHtml = "";
-  if (stepKey === "ne") bodyHtml = renderNEStep(state);
+  if (stepKey === "ne") bodyHtml = modoCliente ? renderClienteEmpresa(state) : renderNEStep(state);
   else if (stepKey === "seleccion") bodyHtml = renderSeleccionStep(state);
   else if (stepKey === "captacion") bodyHtml = renderCaptacionStep(state);
   else if (stepKey === "proceso") bodyHtml = renderProcesoComercialStep(state);
@@ -319,7 +330,7 @@ function render() {
        <button class="sb-btn primary" data-cli-enviar ${bloqueado ? "disabled" : ""}><i class="ti ti-send"></i> Enviar</button>`
     : `<button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
   const barra = `<div class="sesion-bar">
-    <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> ${modoCliente ? "Mis formularios" : "Inicio"}</button>
+    <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> ${ctx.esExtranet ? "Mis formularios" : "Inicio"}</button>
     <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>
     ${accionesBar}
     <span id="sesion-status" class="sb-status">${sesion.status}</span>
@@ -374,7 +385,7 @@ function render() {
   }));
 
   const card = app.querySelector(".card");
-  if (stepKey === "ne") attachNEListeners(card, state, onChange);
+  if (stepKey === "ne") { if (modoCliente) attachClienteEmpresa(card, state, onChange); else attachNEListeners(card, state, onChange); }
   else if (stepKey === "seleccion") attachSeleccionListeners(card, state, onChange);
   else if (stepKey === "captacion") attachCaptacionListeners(card, state, onChange);
   else if (stepKey === "proceso") attachProcesoComercialListeners(card, state, onChange);

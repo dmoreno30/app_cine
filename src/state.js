@@ -97,10 +97,11 @@ export function defaultState() {
     cliente: "",
     // Explicación libre del proceso comercial completo (requerida, va al iCINE)
     procesoIntro: "El proceso comercial centraliza la gestión de oportunidades en Bitrix24, desde la captación del prospecto hasta el cierre de la venta. Cada registro avanza por pipelines con etapas claras, campos personalizados y automatizaciones que aseguran el seguimiento y evitan la pérdida de oportunidades.",
-    meta: { url: "", licencia: "", consultor: "", jefeProyecto: "", version: "1.0", estado: "EN CREACIÓN" },
+    meta: { url: "", licencia: "", licenciaVence: "", consultor: "", jefeProyecto: "", version: "1.0", estado: "EN CREACIÓN" },
     ne: { descripcion: "" },
     empresa: {
       tipoProductos: "",
+      productosEnBitrix: "",   // ¿tiene sus productos cargados en Bitrix24? (sí/no)
       monedas: Object.fromEntries(MONEDAS.map((m) => [m.key, false])),
       otrasMonedas: "",
       usaImpuestos: false,
@@ -396,6 +397,7 @@ export function buildCanonicalJSON(state) {
     // (lib/build.js) todavía no los muestra en el iCINE — se hará más adelante.
     empresa: {
       tipoProductos: state.empresa.tipoProductos.trim(),
+      productosEnBitrix: (state.empresa.productosEnBitrix || "").trim(),
       monedas: Object.keys(state.empresa.monedas).filter((k) => state.empresa.monedas[k]),
       otrasMonedas: state.empresa.otrasMonedas.trim(),
       usaImpuestos: !!state.empresa.usaImpuestos,
