@@ -57,11 +57,12 @@ function armarFields(b) {
   if (b.jefeId) f[PROP_JEFE] = String(b.jefeId);
   if (b.desarrolladorId) f[PROP_DESARROLLADOR] = String(b.desarrolladorId);
   f[PROP_JSON] = JSON.stringify(b.borrador || {});
-  f[PROP_TIPO] = TIPO[b.tipo] || TIPO.icine;
-  f[PROP_STATUS] = STATUS[b.status] || STATUS.borrador;
+  // Las propiedades de tipo LISTA se envían como arreglo de IDs del valor (ver doc lists.element.add).
+  f[PROP_TIPO] = [TIPO[b.tipo] || TIPO.icine];
+  f[PROP_STATUS] = [STATUS[b.status] || STATUS.borrador];
   // Estado de formulario: solo se escribe cuando se indica explícitamente,
   // para no pisarlo en guardados normales del desarrollador.
-  if (b.formStatus && FORM[b.formStatus]) f[PROP_FORM] = FORM[b.formStatus];
+  if (b.formStatus && FORM[b.formStatus]) f[PROP_FORM] = [FORM[b.formStatus]];
   return f;
 }
 // Lee el estado de formulario actual de un elemento (o "" si no es formulario).
@@ -127,7 +128,7 @@ export default async function handler(req, res) {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
       const fs = await leerFormStatus(b.elementId);
       if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado." });
-      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}), [PROP_FORM]: FORM.enviado } });
+      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}), [PROP_FORM]: [FORM.enviado] } });
       return res.json({ ok: true, elementId: b.elementId, formStatus: "enviado" });
     }
     if (b.action === "load") {

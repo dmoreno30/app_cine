@@ -44,16 +44,22 @@ function cardProx(m) {
     </div>`;
 }
 
-export function renderSeleccionStep(state) {
+export function renderSeleccionStep(state, modoCliente) {
   const d = ensureDesarrollos(state);
   const grupoProc = SUB_PROCESO.map((m) => card(m, d[m.key])).join("");
   const otros = OTROS.map((m) => card(m, d[m.key])).join("");
   const prox = PROXIMAMENTE.map((m) => cardProx(m)).join("");
 
+  const titulo = modoCliente ? "¿Qué necesitas implementar?" : "Selección de desarrollos";
+  const ayuda = modoCliente
+    ? "Elige lo que tu empresa necesita. Según lo que marques, te haremos unas pocas preguntas en los siguientes pasos."
+    : "Marcá lo que este cliente necesita. El iCINE incluirá solo las secciones elegidas.";
+  const fijos = modoCliente ? "" : `<div class="sel-fixed"><i class="ti ti-lock"></i> Pasos fijos: <b>Sobre la empresa</b> al inicio y <b>Generar iCINE</b> al final.</div>`;
+
   return `
-    <p class="step-title">Selección de desarrollos</p>
-    <p class="step-helper">Marcá lo que este cliente necesita. El iCINE incluirá solo las secciones elegidas.</p>
-    <div class="sel-fixed"><i class="ti ti-lock"></i> Pasos fijos: <b>Sobre la empresa</b> al inicio y <b>Generar iCINE</b> al final.</div>
+    <p class="step-title">${titulo}</p>
+    <p class="step-helper">${ayuda}</p>
+    ${fijos}
 
     <p class="field-label" style="margin-top:6px">Proceso Comercial <span style="font-weight:400;color:var(--text-secondary)">— elegí las partes que apliquen</span></p>
     <div class="sel-grid">${grupoProc}</div>

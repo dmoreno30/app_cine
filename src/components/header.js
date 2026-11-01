@@ -3,7 +3,7 @@
 // por un <img src="/assets/logo-asesores-e.png" alt="asesores-e">.
 export const INSTITUCIONAL = {
   nombre: "asesores-e",
-  tagline: "Consultoría e implementación Bitrix24",
+  tagline: "Consultoría de implementación de necesidad específica",
   web: "www.asesores-e.net",
   email: "contacto@asesores-e.net",
   telefono: "+00 000 000 000"
@@ -14,8 +14,8 @@ export function renderHeader() {
     <header class="app-header">
       <div class="logo-dot"></div>
       <div>
-        <p class="app-title">Captura de diagnóstico</p>
-        <p class="app-sub">${INSTITUCIONAL.nombre} · ${INSTITUCIONAL.tagline}</p>
+        <p class="app-title">${INSTITUCIONAL.nombre}</p>
+        <p class="app-sub">${INSTITUCIONAL.tagline}</p>
       </div>
     </header>`;
 }

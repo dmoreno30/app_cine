@@ -4,6 +4,7 @@ import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
 import { renderNEStep, attachNEListeners } from "./steps/neStep.js";
 import { renderClienteEmpresa, attachClienteEmpresa } from "./steps/clienteEmpresaStep.js";
+import { renderClienteCaptacion, attachClienteCaptacion } from "./steps/clienteCaptacionStep.js";
 import { renderSeleccionStep, attachSeleccionListeners } from "./steps/seleccionStep.js";
 import { renderCaptacionStep, attachCaptacionListeners } from "./steps/captacionStep.js";
 import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./steps/procesoComercialStep.js";
@@ -244,8 +245,8 @@ function renderCliente() {
         </div>`).join("")
     : `<p style="color:#888">No hay formularios asignados para este proyecto todavía.</p>`;
   return `<div class="card">
-    <p class="step-title">Formularios para completar</p>
-    <p class="step-helper">Proyecto: <b>${escapeHtml(ctx.proyectoNombre || "")}</b>. Completa la información de tu necesidad; puedes guardar un borrador y volver más tarde. Al enviar, queda bloqueado.</p>
+    <p class="step-title">Información sobre los procesos a implementar</p>
+    <p class="step-helper">Proyecto: <b>${escapeHtml(ctx.proyectoNombre || "")}</b>. Cuéntanos qué necesitas; puedes guardar un borrador y volver más tarde. Cuando envíes, tu equipo de asesores-e lo revisará.</p>
     <div class="ini-lista">${filas}</div>
   </div>`;
 }
@@ -253,6 +254,7 @@ function renderCliente() {
 /* ---------------- RENDER GENERAL ---------------- */
 function render() {
   const app = document.getElementById("app");
+  try { document.body.classList.toggle("cliente-mode", !!(ctx.esExtranet || sesion.modoCliente)); } catch (e) { /* noop */ }
 
   if (vista === "inicio") {
     app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
@@ -283,8 +285,8 @@ function render() {
   const stepKey = pasos[currentStep].key;
   let bodyHtml = "";
   if (stepKey === "ne") bodyHtml = modoCliente ? renderClienteEmpresa(state) : renderNEStep(state);
-  else if (stepKey === "seleccion") bodyHtml = renderSeleccionStep(state);
-  else if (stepKey === "captacion") bodyHtml = renderCaptacionStep(state);
+  else if (stepKey === "seleccion") bodyHtml = renderSeleccionStep(state, modoCliente);
+  else if (stepKey === "captacion") bodyHtml = modoCliente ? renderClienteCaptacion(state) : renderCaptacionStep(state);
   else if (stepKey === "proceso") bodyHtml = renderProcesoComercialStep(state);
   else if (stepKey === "reporteria") bodyHtml = renderReporteriaStep(state);
   else if (stepKey === "chatbot") bodyHtml = renderChatbotStep(state);
@@ -387,7 +389,7 @@ function render() {
   const card = app.querySelector(".card");
   if (stepKey === "ne") { if (modoCliente) attachClienteEmpresa(card, state, onChange); else attachNEListeners(card, state, onChange); }
   else if (stepKey === "seleccion") attachSeleccionListeners(card, state, onChange);
-  else if (stepKey === "captacion") attachCaptacionListeners(card, state, onChange);
+  else if (stepKey === "captacion") { if (modoCliente) attachClienteCaptacion(card, state, onChange); else attachCaptacionListeners(card, state, onChange); }
   else if (stepKey === "proceso") attachProcesoComercialListeners(card, state, onChange);
   else if (stepKey === "reporteria") attachReporteriaListeners(card, state, onChange);
   else if (stepKey === "chatbot") attachChatbotListeners(card, state, onChange);
