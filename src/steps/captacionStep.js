@@ -1,11 +1,16 @@
-import { CANALES } from "../data/config.js";
+import { CANALES, CAPTACION_TEXTOS, CAPTACION_ACTIVIDADES, CAPTACION_CIP, conCliente } from "../data/config.js";
 import { escapeHtml, escapeAttr } from "../utils.js";
 
 const cfgDe = (tipo) => CANALES.find((c) => c.key === tipo) || {};
 const labelDe = (tipo) => cfgDe(tipo).label || tipo;
 const iconDe = (tipo) => cfgDe(tipo).icon || "ti-plug-connected";
+const TEXTO_FIJO = { facebook: "facebook", instagram: "facebook" }; // ambos usan el texto de FB/IG
 
-function renderCanalCard(c, idx, numDelTipo) {
+function bloqueFijo(html) {
+  return `<div class="cap-fijo"><i class="ti ti-lock" style="font-size:12px;margin-right:4px;color:#8a8a8a"></i>${html}</div>`;
+}
+
+function renderCanalCard(c, idx) {
   const cfg = cfgDe(c.tipo);
   const col = !!c.colapsado;
   const ph = cfg.necesitaNombre ? "Nombre del canal (requerido)" : "Nombre / etiqueta";
@@ -18,73 +23,89 @@ function renderCanalCard(c, idx, numDelTipo) {
     </div>`;
   if (col) return `<div class="rep-card">${header}</div>`;
 
-  // Widget: no flujo, solo URL + tiempo
-  if (cfg.esWidget) {
+  // Facebook / Instagram → texto y consideración fijos
+  if (c.tipo === "facebook" || c.tipo === "instagram") {
     return `
       <div class="rep-card">${header}
-        <p class="step-helper" style="margin:2px 0 8px">Vinculación de un widget a un sitio web. No lleva flujo: indicá el sitio y el tiempo.</p>
-        <div class="rep-field"><label>Página web donde se vincula <span style="color:#c00">*</span></label>
-          <input type="text" data-cap-url="${idx}" value="${escapeAttr(c.url || "")}" placeholder="https://..."></div>
-        <div class="rep-field"><label>Tiempo de la actividad <span style="color:#c00">*</span></label>
-          <input type="text" data-cap-tiempo="${idx}" value="${escapeAttr(c.tiempo || "")}" placeholder="Ej. 2 h" style="max-width:150px"></div>
+        ${bloqueFijo(`<p style="margin:0">${escapeHtml(CAPTACION_TEXTOS.facebook)}</p>`)}
+        ${bloqueFijo(`<b>Consideración:</b> ${escapeHtml(CAPTACION_TEXTOS.facebookConsideracion)}`)}
       </div>`;
   }
 
+  // Formularios del CRM → texto y consideración fijos
+  if (c.tipo === "formularios") {
+    return `
+      <div class="rep-card">${header}
+        ${bloqueFijo(`<p style="margin:0">${escapeHtml(CAPTACION_TEXTOS.formularios)}</p>`)}
+        ${bloqueFijo(`<b>Consideración:</b> ${escapeHtml(CAPTACION_TEXTOS.formulariosConsideracion)}`)}
+      </div>`;
+  }
+
+  // Widget → solo página web (sin tiempo)
+  if (cfg.esWidget) {
+    return `
+      <div class="rep-card">${header}
+        <div class="rep-field"><label>Página web donde se vincula <span style="color:#c00">*</span></label>
+          <input type="text" data-cap-url="${idx}" value="${escapeAttr(c.url || "")}" placeholder="https://..."></div>
+      </div>`;
+  }
+
+  // TikTok / LinkedIn → conector externo; resto → flujo simple (SIN tiempo)
   const conectorField = cfg.necesitaConector ? `
     <div class="rep-field"><label>¿Con qué conector externo se hará la conexión? <span style="color:#c00">*</span></label>
       <input type="text" data-cap-conector="${idx}" value="${escapeAttr(c.conector || "")}" placeholder="Ej. conector de un tercero">
     </div>` : "";
-
   const pasos = (c.flujo || []).map((p, i) => `
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
       <div class="paso-campos">
-        <textarea data-cf="${idx}" data-cf-i="${i}" data-cf-prop="accion" rows="2" placeholder="Acción / Descripción *">${escapeHtml(p.accion || "")}</textarea>
-        <div class="row-flex">
-          <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="responsable" value="${escapeAttr(p.responsable || "")}" placeholder="Responsable">
-          <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="tiempo" value="${escapeAttr(p.tiempo || "")}" placeholder="Tiempo * (ej. 2 h)" style="max-width:150px">
-        </div>
+        <textarea data-cf="${idx}" data-cf-i="${i}" data-cf-prop="accion" rows="2" placeholder="Acción / Descripción">${escapeHtml(p.accion || "")}</textarea>
+        <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="responsable" value="${escapeAttr(p.responsable || "")}" placeholder="Responsable">
         <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="condicion" value="${escapeAttr(p.condicion || "")}" placeholder="Condición o regla (opcional)">
       </div>
       <button class="icon-btn" data-cf-remove="${idx}|${i}"><i class="ti ti-x"></i></button>
     </div>`).join("");
-
   return `
     <div class="rep-card">${header}
       ${conectorField}
-      <p class="step-helper" style="margin:2px 0 8px">Flujo de este canal, paso a paso. <b>Acción</b> y <b>Tiempo</b> son requeridos.</p>
+      <p class="step-helper" style="margin:2px 0 8px">Flujo de este canal, paso a paso (sin tiempos).</p>
       ${pasos || '<p style="font-size:12px;color:#999;margin:4px 0">Sin pasos todavía.</p>'}
       <button class="add-btn small" data-cf-add="${idx}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
     </div>`;
 }
 
+// Fija en el estado los textos/valores estándar de Captación (idempotente).
+function fijarEstandar(state) {
+  const cap = state.captacion;
+  cap.intro = conCliente(CAPTACION_TEXTOS.intro, state.cliente);
+  if (!state.consideraciones) state.consideraciones = {};
+  state.consideraciones.captacion = conCliente(CAPTACION_TEXTOS.consideracionGeneral, state.cliente);
+  if (!state.cip) state.cip = {};
+  state.cip.captacion = CAPTACION_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo }));
+}
+
 export function renderCaptacionStep(state) {
   const cap = state.captacion;
   if (!Array.isArray(cap.canales)) cap.canales = [];
-  if (!Array.isArray(cap.conexiones)) cap.conexiones = [];
+  fijarEstandar(state);
 
   const menu = CANALES.map((c) => `<div class="canal-chip" data-cap-add="${c.key}"><i class="ti ${c.icon}"></i>${c.label}</div>`).join("");
-  const countTipo = {};
-  cap.canales.forEach((c) => { countTipo[c.tipo] = (countTipo[c.tipo] || 0) + 1; });
   const cards = cap.canales.length
-    ? cap.canales.map((c, i) => renderCanalCard(c, i, countTipo[c.tipo])).join("")
+    ? cap.canales.map((c, i) => renderCanalCard(c, i)).join("")
     : '<p style="font-size:13px;color:#888;margin:4px 0">Todavía no agregaste canales. Elegí uno del menú (podés sumar varios del mismo tipo).</p>';
 
-  const conex = cap.conexiones.map((x, i) => `
-    <div class="row-flex">
-      <input type="text" data-conx-i="${i}" data-conx-prop="titulo" value="${escapeAttr(x.titulo || "")}" placeholder="Actividad (ej. Conectar canales FB e IG a la cuenta)">
-      <input type="text" data-conx-i="${i}" data-conx-prop="tiempo" value="${escapeAttr(x.tiempo || "")}" placeholder="Tiempo (ej. 1 h)" style="max-width:150px">
-      <button class="icon-btn" data-conx-remove="${i}"><i class="ti ti-x"></i></button>
-    </div>`).join("");
+  const actividades = CAPTACION_ACTIVIDADES.map((a) => `<li>${escapeHtml(a)}</li>`).join("");
+  const capacitacion = CAPTACION_CIP.map((c) => `<li>${escapeHtml(c.titulo)} <b>— ${escapeHtml(c.tiempo)}</b></li>`).join("");
+  const introClienteNota = (state.cliente || "").trim() ? "" : `<p class="step-helper" style="margin-top:4px;color:#8a5a00"><i class="ti ti-info-circle"></i> "XX" se reemplazará por el nombre del cliente cuando lo completes en "Detalles de la empresa".</p>`;
 
   return `
     <p class="step-title">Captación de clientes</p>
-    <p class="step-helper">Agregá los canales por donde llegan los clientes. Podés sumar varios del mismo tipo.</p>
+    <p class="step-helper">Agregá los canales por donde llegan los clientes. Los textos estándar ya están definidos y se incluyen en el iCINE.</p>
 
     <div class="field-block">
-      <label class="field-label">Definición del proceso de captación <span style="color:#c00">*</span></label>
-      <p class="step-helper" style="margin-top:2px">Texto introductorio de cómo entran y se derivan los clientes. Va al iCINE.</p>
-      <textarea data-cap-intro rows="3" placeholder="Ej. Los clientes ingresarán por diversos canales conectados a Bitrix24 y se derivarán a los asesores en cola según las reglas establecidas...">${escapeHtml(cap.intro || "")}</textarea>
+      <label class="field-label">Texto introductorio <span style="font-weight:400;color:var(--text-secondary)">— fijo, va al iCINE</span></label>
+      ${bloqueFijo(conCliente(CAPTACION_TEXTOS.intro, state.cliente).split(/\n\n+/).map((p) => `<p style="margin:0 0 8px">${escapeHtml(p)}</p>`).join(""))}
+      ${introClienteNota}
     </div>
 
     <div class="field-block">
@@ -100,26 +121,32 @@ export function renderCaptacionStep(state) {
       ${cards}
     </div>
 
-    <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;background:#fafafa">
-      <label class="field-label"><i class="ti ti-link"></i> Actividades de conexión de canales abiertos <span style="color:#c00">*</span></label>
-      <p class="step-helper" style="margin-top:2px">Crear el canal es una cosa; conectarlo a la cuenta (o vincular el widget al sitio) es otra. Una actividad puede cubrir varios canales. Suma al tiempo del iCINE.</p>
-      ${conex || '<p style="font-size:12px;color:#999;margin:4px 0">Sin actividades todavía.</p>'}
-      <button class="add-btn" data-conx-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar actividad</button>
+    <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
+      <label class="field-label"><i class="ti ti-link"></i> Actividades de creación y conexión de canales en general <span style="font-weight:400;color:var(--text-secondary)">— fijas, van al iCINE</span></label>
+      <ul class="cap-lista">${actividades}</ul>
+    </div>
+
+    <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
+      <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="font-weight:400;color:var(--text-secondary)">— fija</span></label>
+      <ul class="cap-lista">${capacitacion}</ul>
+    </div>
+
+    <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
+      <label class="field-label"><i class="ti ti-note"></i> Consideraciones <span style="font-weight:400;color:var(--text-secondary)">— fijas, van al iCINE</span></label>
+      ${bloqueFijo(conCliente(CAPTACION_TEXTOS.consideracionGeneral, state.cliente).split(/\n\n+/).map((p) => `<p style="margin:0 0 8px">${escapeHtml(p)}</p>`).join(""))}
     </div>`;
 }
 
 export function attachCaptacionListeners(container, state, onChange) {
   const cap = state.captacion;
   if (!Array.isArray(cap.canales)) cap.canales = [];
-  if (!Array.isArray(cap.conexiones)) cap.conexiones = [];
-
-  const intro = container.querySelector("[data-cap-intro]");
-  if (intro) intro.addEventListener("input", (e) => { cap.intro = e.target.value; onChange({ rerender: false }); });
+  fijarEstandar(state);
 
   container.querySelectorAll("[data-cap-add]").forEach((el) => el.addEventListener("click", () => {
     const tipo = el.getAttribute("data-cap-add"); const cfg = CANALES.find((c) => c.key === tipo) || {};
     const inst = { tipo, nombre: "", colapsado: false };
-    if (cfg.esWidget) { inst.url = ""; inst.tiempo = ""; inst.flujo = []; }
+    if (cfg.esWidget) { inst.url = ""; inst.flujo = []; }
+    else if (tipo === "facebook" || tipo === "instagram" || tipo === "formularios") { inst.flujo = []; }
     else { if (cfg.necesitaConector) inst.conector = ""; inst.flujo = [{ accion: "", responsable: "", condicion: "", tiempo: "" }]; }
     cap.canales.push(inst); onChange({ rerender: true });
   }));
@@ -130,7 +157,6 @@ export function attachCaptacionListeners(container, state, onChange) {
 
   container.querySelectorAll("[data-cap-nombre]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-nombre"), 10)].nombre = e.target.value; onChange({ rerender: false }); }));
   container.querySelectorAll("[data-cap-url]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-url"), 10)].url = e.target.value; onChange({ rerender: false }); }));
-  container.querySelectorAll("[data-cap-tiempo]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-tiempo"), 10)].tiempo = e.target.value; onChange({ rerender: false }); }));
   container.querySelectorAll("[data-cap-conector]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-conector"), 10)].conector = e.target.value; onChange({ rerender: false }); }));
 
   container.querySelectorAll("[data-cf-prop]").forEach((el) => el.addEventListener("input", (e) => {
@@ -145,12 +171,4 @@ export function attachCaptacionListeners(container, state, onChange) {
     const [idx, i] = el.getAttribute("data-cf-remove").split("|");
     cap.canales[parseInt(idx, 10)].flujo.splice(parseInt(i, 10), 1); onChange({ rerender: true });
   }));
-
-  // Actividades de conexión
-  container.querySelectorAll("[data-conx-prop]").forEach((el) => el.addEventListener("input", (e) => {
-    cap.conexiones[parseInt(el.getAttribute("data-conx-i"), 10)][el.getAttribute("data-conx-prop")] = e.target.value; onChange({ rerender: false });
-  }));
-  const addConx = container.querySelector("[data-conx-add]");
-  if (addConx) addConx.addEventListener("click", () => { cap.conexiones.push({ titulo: "", tiempo: "" }); onChange({ rerender: true }); });
-  container.querySelectorAll("[data-conx-remove]").forEach((el) => el.addEventListener("click", () => { cap.conexiones.splice(parseInt(el.getAttribute("data-conx-remove"), 10), 1); onChange({ rerender: true }); }));
 }

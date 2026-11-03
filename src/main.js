@@ -303,13 +303,14 @@ function render() {
     if (!Array.isArray(state.cip[ck])) state.cip[ck] = [];
     // En Proceso Comercial la capacitación se captura al inicio del paso (única, requerida),
     // así que aquí no se vuelve a mostrar el bloque de CIP.
-    const cipRows = stepKey === "proceso" ? "" : state.cip[ck].map((c, i) => `
+    const cipFijo = stepKey === "proceso" || stepKey === "captacion"; // proceso y captación capturan la capacitación de forma propia
+    const cipRows = cipFijo ? "" : state.cip[ck].map((c, i) => `
       <div class="row-flex">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:130px">
         <button class="icon-btn" data-cip-remove="${ck}|${i}"><i class="ti ti-x"></i></button>
       </div>`).join("");
-    if (stepKey !== "proceso") bodyHtml += `
+    if (!cipFijo) bodyHtml += `
       <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
         <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="color:#c00">*</span></label>
         <p class="step-helper" style="margin-top:2px">Capacitación de implementación personalizada para esta NE. Se agrega a la tabla de tiempos (Capacitación — CIP).</p>
@@ -318,13 +319,16 @@ function render() {
       </div>`;
 
     if (!state.consideraciones) state.consideraciones = {};
-    const val = escapeHtml(state.consideraciones[ck] || "");
-    bodyHtml += `
-      <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
-        <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
-        <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
-        <textarea data-consideraciones="${ck}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
-      </div>`;
+    // Captación fija sus consideraciones dentro del propio paso.
+    if (stepKey !== "captacion") {
+      const val = escapeHtml(state.consideraciones[ck] || "");
+      bodyHtml += `
+        <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
+          <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
+          <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
+          <textarea data-consideraciones="${ck}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
+        </div>`;
+    }
   }
 
   const accionesBar = modoCliente

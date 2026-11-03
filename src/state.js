@@ -1,4 +1,4 @@
-import { CANALES, ENTIDADES, MONEDAS } from "./data/config.js";
+import { CANALES, ENTIDADES, MONEDAS, CAPTACION_TEXTOS, CAPTACION_CIP, conCliente } from "./data/config.js";
 import { CATALOGO_RRHH, CAMPOS_RRHH } from "./data/rrhh.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
@@ -511,6 +511,13 @@ export function buildCanonicalJSON(state) {
         consideraciones: (r.consideraciones || "").trim()
       }))
   };
+
+  // Captación: textos, capacitación y consideraciones FIJAS y estándar (siempre al iCINE).
+  if (state.desarrollos && state.desarrollos.captacion) {
+    out.captacionDeClientes.intro = conCliente(CAPTACION_TEXTOS.intro, out.cliente);
+    out.consideraciones.captacion = conCliente(CAPTACION_TEXTOS.consideracionGeneral, out.cliente);
+    out.cip.captacion = CAPTACION_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo }));
+  }
 
   return out;
 }

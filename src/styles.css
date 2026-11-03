@@ -293,3 +293,9 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 
 /* Selección de necesidades (tarjetas) un poco más amables */
 .cliente-mode .sel-card{ border-radius:14px; }
+
+/* Bloques de texto FIJO (Captación estándar, lado desarrollador) */
+.cap-fijo{ background:#f6f8fa; border:1px solid #e4e9ee; border-left:3px solid #056AA1; border-radius:8px; padding:12px 14px; margin:6px 0; font-size:13.5px; color:#333; line-height:1.55; }
+.cap-fijo p:last-child{ margin-bottom:0 !important; }
+.cap-lista{ margin:6px 0 0; padding-left:20px; }
+.cap-lista li{ font-size:13.5px; margin:4px 0; color:#333; }

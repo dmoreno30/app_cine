@@ -119,3 +119,39 @@ export const DIRECCIONES_API = [
 export const PERMISOS_CRM = ["Crear", "Ver", "Editar", "Eliminar", "Exportar", "Importar"];
 
 export const WEBSERVICES = ["Webservice Basic", "Webservice Standard", "Webservice Advance"];
+
+/* ============================================================================
+   Captación — textos FIJOS y estándar del iCINE (lado desarrollador).
+   "XX" se reemplaza por el nombre del cliente cuando está disponible.
+   ============================================================================ */
+export const CAPTACION_TEXTOS = {
+  intro:
+    "Los clientes podrán ingresar a Bitrix24 a través de diferentes canales digitales conectados a la plataforma, permitiendo centralizar las consultas y mantener un registro organizado de las interacciones.\n\n" +
+    "Los canales de comunicación directa contarán con una configuración que permitirá al equipo responsable recibir, gestionar y responder los mensajes de los interesados en tiempo real. Asimismo, se habilitarán formularios y chats en vivo en el sitio web de XX, mediante los cuales los visitantes podrán realizar consultas o proporcionar sus datos para recibir atención comercial.",
+  facebook:
+    "Canal de comunicación que permitirá recibir en Bitrix24 los mensajes enviados por los visitantes a través de Facebook mediante messenger. Las consultas podrán ser atendidas directamente por el equipo interno responsable, facilitando una comunicación inmediata y centralizada con los interesados.",
+  facebookConsideracion: "Respuestas automáticas activas (saludos iniciales).",
+  formularios:
+    "Formulario integrado en el sitio web de XX que permitirá recopilar información de los interesados en sus servicios. Los datos proporcionados serán registrados en el CRM para generar nuevos prospectos y facilitar su posterior seguimiento por parte del equipo comercial.",
+  formulariosConsideracion: "Sin automatizaciones de reasignación.",
+  consideracionGeneral:
+    "Para la integración de redes sociales, formularios y otros canales externos que requieran acceso a plataformas de terceros, como Facebook, Instagram o el sitio web de XX, no será necesario solicitar ni recopilar previamente las credenciales de acceso del cliente.\n\n" +
+    "Sin embargo, XX deberá contar con los accesos y permisos correspondientes para realizar las vinculaciones. Por ello, se coordinarán actividades específicas durante la implementación, en las cuales el cliente deberá facilitar los accesos necesarios para completar las integraciones."
+};
+// Actividades FIJAS de creación y conexión (van al iCINE).
+export const CAPTACION_ACTIVIDADES = [
+  "Creación de canal abierto FB - Instagram",
+  "Conexión de cuenta FB - Instagram a canales abiertos",
+  "Creación de Formulario del CRM - Widget del sitio web",
+  "Vinculación de formulario del CRM + Widget del sitio web"
+];
+// Capacitación (CIP) FIJA de Captación.
+export const CAPTACION_CIP = [
+  { titulo: "Gestión de mensajes entrantes desde diversos canales (nivel usuario)", tiempo: "1 hora" },
+  { titulo: "Gestión de canales abiertos + formularios del CRM + Widget (nivel administrador)", tiempo: "2 horas" }
+];
+// Reemplaza "XX" por el nombre del cliente (o lo deja si no hay nombre).
+export function conCliente(txt, cliente) {
+  const n = (cliente || "").trim();
+  return n ? String(txt).replace(/XX/g, n) : String(txt);
+}
