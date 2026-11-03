@@ -1,4 +1,4 @@
-import { CANALES, ENTIDADES, MONEDAS, CAPTACION_TEXTOS, CAPTACION_CIP, conCliente } from "./data/config.js";
+import { CANALES, ENTIDADES, MONEDAS, CAPTACION_TEXTOS, CAPTACION_CIP, conCliente, ROL_SUPERVISOR, PROCESO_CIP } from "./data/config.js";
 import { CATALOGO_RRHH, CAMPOS_RRHH } from "./data/rrhh.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
@@ -22,7 +22,7 @@ const PRESETS_PIPELINE = {
       { accion: "Calificar interés y capacidad; convertir a negociación o descartar con motivo.", responsable: "Asesor comercial", herramienta: "CRM", condicion: "Según calificación" }
     ],
     actividadCampos: { descripcion: "Creación de los campos personalizados y orden de la ficha del prospecto.", tiempo: "" },
-    automatizaciones: [{ parametro: "Creación del prospecto", valor: "Asignar responsable automáticamente y notificar al asesor.", etapa: "Nuevo", tiempo: "" }]
+    automatizaciones: [{ parametro: "Cambio de título y notificaciones", valor: "Modificación del título a Prospecto #{{ID}} - NOMBREDELPROSPECTO", etapa: "Nuevo Prospecto", tiempo: "" }]
   },
   negociaciones: {
     flujo: "La oportunidad se abre al convertir un prospecto calificado. El asesor avanza la negociación por las etapas hasta ganarla (venta cerrada) o perderla (se registra el motivo de pérdida).",
@@ -49,10 +49,11 @@ function defaultPipelineEntity(key) {
     exito: { titulo: "", descripcion: "" },   // etapa de cierre exitoso (única, no múltiple)
     etapasFallo: [{ nombre: "", descripcion: "" }],
     actividadEtapas: { descripcion: "", tiempo: "" },  // actividad: configurar las etapas (+tiempo)
-    flujoPasos: [{ accion: "", responsable: "", herramienta: "", condicion: "" }],
-    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false }],
+    flujoPasos: [{ accion: "", responsable: "", herramienta: "CRM / Prospecto", condicion: "" }],
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false, valores: "" }],
     actividadCampos: { descripcion: "", tiempo: "" },  // actividad: crear campos / ordenar ficha (+tiempo)
-    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]
+    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }],
+    autoTiempos: [{ descripcion: "", tiempo: "" }]  // tiempo de TODAS las automatizaciones (campo múltiple)
   };
   const preset = PRESETS_PIPELINE[key];
   return preset ? { ...base, ...JSON.parse(JSON.stringify(preset)) } : base;
@@ -63,9 +64,10 @@ function toStage(x) {
 }
 function defaultSimpleEntity() {
   return {
-    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false }],
+    camposPersonalizados: [{ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false, valores: "" }],
     actividadCampos: { descripcion: "", tiempo: "" },
-    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }]  // disponible, no requerida
+    automatizaciones: [{ parametro: "", valor: "", etapa: "", tiempo: "" }],  // disponible, no requerida
+    autoTiempos: [{ descripcion: "", tiempo: "" }]
   };
 }
 function defaultPostventaEntity() {
@@ -120,7 +122,7 @@ export function defaultState() {
     // Consideraciones por NE (texto libre que se agrega al final de cada NE en el iCINE)
     consideraciones: { captacion: "", proceso: "", reporteria: "", chatbot: "", api: "", app: "", rrhh: "" },
     // Capacitación (CIP) por NE: [{ titulo, tiempo }]
-    cip: { captacion: [], proceso: [{ titulo: "Capacitación en el uso del CRM comercial: pipelines, fichas, campos y automatizaciones.", tiempo: "" }], reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
+    cip: { captacion: [], proceso: PROCESO_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo })), reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
     // Pruebas (solo tiempos) para la tabla del punto 5
     pruebas: { qa: "", alpha: "" },
     // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
@@ -260,7 +262,12 @@ export function resetState() {
 function cleanFields(arr) {
   return (arr || [])
     .filter((f) => (f.nombre || f.campo || "").trim())
-    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio }));
+    .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio, valores: (f.valores || "").trim() }));
+}
+function cleanAutoTiempos(arr) {
+  return (arr || [])
+    .filter((a) => (a.descripcion || "").trim() || (a.tiempo || "").trim())
+    .map((a) => ({ descripcion: (a.descripcion || "").trim(), tiempo: (a.tiempo || "").trim() }));
 }
 function cleanActividad(a) {
   a = a || {};
@@ -439,6 +446,10 @@ export function buildCanonicalJSON(state) {
   out.procesoComercial.roles = (state.roles || [])
     .filter((r) => (r.rol || "").trim())
     .map((r) => ({ rol: r.rol.trim(), permisos: (r.permisos || []).slice(), observaciones: (r.observaciones || "").trim() }));
+  // Rol fijo "Supervisor" siempre presente (al inicio, sin duplicar).
+  if (!out.procesoComercial.roles.some((r) => (r.rol || "").toLowerCase() === "supervisor")) {
+    out.procesoComercial.roles.unshift({ rol: ROL_SUPERVISOR.rol, permisos: ROL_SUPERVISOR.permisos.slice(), observaciones: ROL_SUPERVISOR.observaciones });
+  }
 
   Object.keys(ENTIDADES).forEach((key) => {
     if (!state.entidadesHabilitadas[key]) return;
@@ -456,7 +467,8 @@ export function buildCanonicalJSON(state) {
           .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() })),
         camposPersonalizados: cleanFields(data.camposPersonalizados),
         actividadCampos: cleanActividad(data.actividadCampos),
-        automatizaciones: cleanAutos(data.automatizaciones)
+        automatizaciones: cleanAutos(data.automatizaciones),
+        autoTiempos: cleanAutoTiempos(data.autoTiempos)
       };
       if (key === "cotizaciones" && data.origenExterno) {
         entry.origenExterno = {
@@ -470,7 +482,8 @@ export function buildCanonicalJSON(state) {
       out.procesoComercial.entidades[key] = {
         camposPersonalizados: cleanFields(data.camposPersonalizados),
         actividadCampos: cleanActividad(data.actividadCampos),
-        automatizaciones: cleanAutos(data.automatizaciones)
+        automatizaciones: cleanAutos(data.automatizaciones),
+        autoTiempos: cleanAutoTiempos(data.autoTiempos)
       };
     } else if (cfg.type === "postventa") {
       out.procesoComercial.entidades[key] = {

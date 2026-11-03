@@ -299,3 +299,42 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .cap-fijo p:last-child{ margin-bottom:0 !important; }
 .cap-lista{ margin:6px 0 0; padding-left:20px; }
 .cap-lista li{ font-size:13.5px; margin:4px 0; color:#333; }
+
+/* ===================== Proceso Comercial (dev) — mejoras visuales ===================== */
+/* Colores y tamaño de las etiquetas de etapas */
+.field-label.et-progreso{ font-size:16px; color:#1565c0; }
+.field-label.et-descarte{ font-size:16px; color:#c62828; }
+.field-label.et-exito{ font-size:16px; color:#1b5e20; }
+
+/* Encabezado de sección (acciones: flujo / campos / automatizaciones) */
+.field-label.pc-sec{ font-size:15.5px; font-weight:700; color:#1b2b33; border-bottom:2px solid #eef2f5; padding-bottom:6px; }
+
+/* Cabecera del form con botón de minimizar todo el proceso */
+.pc-form-head{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+
+/* Conjunto de etapas colapsable */
+.pc-etapas{ border:1px solid #e6edf1; border-radius:12px; padding:0 14px 8px; margin:10px 0 16px; background:#fcfdfe; }
+.pc-etapas-head{ display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:12px 2px; font-weight:700; color:#1b2b33; }
+.pc-etapas-head i.ti-stack-2{ margin-right:6px; color:#056AA1; }
+
+/* Actividad con tiempo */
+.pc-actividad{ background:#f4f9fc; border:1px solid #dcebf3; border-radius:10px; padding:10px 12px; }
+
+/* Encabezado prominente del paso a paso */
+.pc-pasoapaso-head{ display:flex; align-items:flex-start; gap:10px; background:linear-gradient(90deg,#eaf4fb,#ffffff); border-left:4px solid #056AA1; border-radius:10px; padding:12px 14px; margin:8px 0 12px; }
+.pc-pasoapaso-head > i{ font-size:22px; color:#056AA1; margin-top:2px; }
+.pc-pasoapaso-title{ font-size:16px; font-weight:700; color:#1b2b33; }
+.pc-pasoapaso-sub{ font-size:13px; color:#63615C; margin-top:2px; }
+
+/* Campos del paso a paso con su etiqueta visible */
+.paso-campo{ margin-bottom:8px; }
+.paso-lbl{ display:block; font-size:12px; font-weight:600; color:#63615C; margin-bottom:3px; }
+.paso-campo input, .paso-campo textarea{ width:100%; }
+
+/* Automatizaciones */
+.auto-head{ display:flex; align-items:center; gap:8px; }
+.auto-num{ background:#056AA1; color:#fff; font-size:12px; font-weight:700; width:22px; height:22px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; }
+
+/* Campo de valores de lista */
+.campo-item{ margin-bottom:6px; }
+.campo-valores{ margin:2px 0 8px 2px; }

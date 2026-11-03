@@ -3,17 +3,24 @@ import { escapeAttr } from "../utils.js";
 
 export function renderFieldList(entityKey, fields) {
   const rows = fields.map((f, i) => `
-    <div class="row-flex" style="align-items:center">
-      <input type="text" data-field-entity="${entityKey}" data-field-prop="nombre" data-field-idx="${i}"
-             value="${escapeAttr(f.nombre)}" placeholder="Nombre del campo">
-      <select data-field-entity="${entityKey}" data-field-prop="tipo" data-field-idx="${i}">
-        ${TIPOS_CAMPO.map((t) => `<option value="${t}" ${f.tipo === t ? "selected" : ""}>${t}</option>`).join("")}
-      </select>
-      <label class="checkbox-row" style="margin:0;white-space:nowrap" title="Marca si el campo es obligatorio">
-        <input type="checkbox" data-field-entity="${entityKey}" data-field-prop="obligatorio" data-field-idx="${i}" ${f.obligatorio ? "checked" : ""}>
-        Requerido
-      </label>
-      <button class="icon-btn" data-remove-field="${entityKey}|${i}"><i class="ti ti-x"></i></button>
+    <div class="campo-item">
+      <div class="row-flex" style="align-items:center">
+        <input type="text" data-field-entity="${entityKey}" data-field-prop="nombre" data-field-idx="${i}"
+               value="${escapeAttr(f.nombre)}" placeholder="Nombre del campo">
+        <select data-field-entity="${entityKey}" data-field-prop="tipo" data-field-idx="${i}">
+          ${TIPOS_CAMPO.map((t) => `<option value="${t}" ${f.tipo === t ? "selected" : ""}>${t}</option>`).join("")}
+        </select>
+        <label class="checkbox-row" style="margin:0;white-space:nowrap" title="Marca si el campo es obligatorio">
+          <input type="checkbox" data-field-entity="${entityKey}" data-field-prop="obligatorio" data-field-idx="${i}" ${f.obligatorio ? "checked" : ""}>
+          Requerido
+        </label>
+        <button class="icon-btn" data-remove-field="${entityKey}|${i}"><i class="ti ti-x"></i></button>
+      </div>
+      ${f.tipo === "Lista" ? `
+      <div class="campo-valores">
+        <label style="font-size:12px;color:var(--text-secondary);display:block;margin:4px 0 3px">Valores de la lista <span style="color:#8B8983">— separados por coma</span></label>
+        <input type="text" data-field-entity="${entityKey}" data-field-prop="valores" data-field-idx="${i}" value="${escapeAttr(f.valores || "")}" placeholder="Ej. Alto, Medio, Bajo">
+      </div>` : ""}
     </div>`).join("");
 
   return `
@@ -34,13 +41,14 @@ export function attachFieldListeners(container, state, onChange) {
       const idx = parseInt(el.getAttribute("data-field-idx"), 10);
       const val = el.type === "checkbox" ? el.checked : e.target.value;
       state.entidades[entity].camposPersonalizados[idx][prop] = val;
-      onChange({ rerender: false });
+      // Cambiar el tipo a "Lista" debe re-renderizar para mostrar el campo de valores.
+      onChange({ rerender: prop === "tipo" });
     });
   });
   container.querySelectorAll("[data-add-field]").forEach((el) => {
     el.addEventListener("click", () => {
       const entity = el.getAttribute("data-add-field");
-      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false });
+      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false, valores: "" });
       onChange({ rerender: true });
     });
   });

@@ -155,3 +155,18 @@ export function conCliente(txt, cliente) {
   const n = (cliente || "").trim();
   return n ? String(txt).replace(/XX/g, n) : String(txt);
 }
+
+/* ============================================================================
+   Proceso Comercial — valores FIJOS / por defecto.
+   ============================================================================ */
+// Rol fijo que siempre va al iCINE (todos los permisos).
+export const ROL_SUPERVISOR = {
+  rol: "Supervisor",
+  permisos: PERMISOS_CRM.slice(),
+  observaciones: "Para supervisores de cada departamento teniendo en cuenta que podrán realizar las acciones en sus registros y en los registros de todos los empleados que pertenezcan al departamento"
+};
+// Capacitación (CIP) por defecto del proceso comercial.
+export const PROCESO_CIP = [
+  { titulo: "Capacitación en el uso del CRM comercial: pipelines, fichas, campos.", tiempo: "4 horas" },
+  { titulo: "Capacitación nivel administrador del CRM (Permisos del CRM - ejecución de automatizaciones - gestión de información)", tiempo: "2 horas" }
+];

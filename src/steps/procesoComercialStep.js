@@ -1,4 +1,4 @@
-import { ENTIDADES, ORDEN_ENTIDADES, PERMISOS_CRM } from "../data/config.js";
+import { ENTIDADES, ORDEN_ENTIDADES, PERMISOS_CRM, ROL_SUPERVISOR } from "../data/config.js";
 import { renderEntityMap, attachEntityMapListeners } from "../components/entityMap.js";
 import { renderStageList, attachStageListeners } from "../components/stageList.js";
 import { renderFieldList, attachFieldListeners } from "../components/fieldList.js";
@@ -10,7 +10,9 @@ import { escapeHtml, escapeAttr } from "../utils.js";
 // porque es solo de navegación, no data del cliente.
 let expandedKey = null;
 let activeEntityTab = null;
-let rolesColapsado = false;   // permite minimizar el bloque de Roles y permisos
+let rolesColapsado = false;   // minimizar el bloque de Roles y permisos
+let etapasColapsado = false;  // minimizar todo el conjunto de etapas
+let formColapsado = false;    // minimizar todo el proceso (form de la entidad)
 
 function entidadesHabilitadasEnOrden(state) {
   return ORDEN_ENTIDADES.filter((k) => state.entidadesHabilitadas[k]);
@@ -72,26 +74,45 @@ function renderEntityForm(state, key) {
 
   if (cfg.type === "postventa") return renderPostventaForm(data);
 
-  let html = `<p class="step-title">${cfg.label}<span class="badge">${cfg.type === "pipeline" ? "proceso" : "solo campos"}</span></p>`;
-  html += `<p class="step-helper">${cfg.helper}</p>`;
+  const cabecera = `
+    <div class="pc-form-head">
+      <p class="step-title" style="margin:0">${cfg.label}<span class="badge">${cfg.type === "pipeline" ? "proceso" : "solo campos"}</span></p>
+      <button class="rep-cat-btn" data-form-toggle><i class="ti ti-chevrons-${formColapsado ? "down" : "up"}"></i> ${formColapsado ? "Expandir" : "Minimizar"} todo</button>
+    </div>
+    <p class="step-helper">${cfg.helper}</p>`;
+  if (formColapsado) return cabecera;
+
+  let html = cabecera;
 
   if (cfg.type === "pipeline") {
     // El flujo va primero: entender la narrativa completa antes de pedir etapas sueltas.
     html += `
       <div class="field-block">
-        <label class="field-label">Flujo del proceso de venta (${cfg.label.toLowerCase()}) <span style="color:#d00">*</span></label>
+        <label class="field-label pc-sec">Flujo del proceso de venta (${cfg.label.toLowerCase()}) <span style="color:#d00">*</span></label>
         <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="3" placeholder="Cuéntanos, en tus palabras, cómo se mueve un registro desde que entra hasta que se cierra o se descarta">${escapeHtml(data.flujo)}</textarea>
       </div>`;
-    html += renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso);
-    html += renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo);
-    html += renderExitoStage(key, data.exito || { titulo: "", descripcion: "" });
-    html += renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, data.actividadEtapas);
+
+    // Conjunto de etapas (colapsable como bloque)
+    const etapasBody = etapasColapsado ? "" : `
+      ${renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso, "et-progreso")}
+      ${renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo, "et-descarte")}
+      ${renderExitoStage(key, data.exito || { titulo: "", descripcion: "" })}
+      ${renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, data.actividadEtapas)}`;
+    html += `
+      <div class="pc-etapas">
+        <div class="pc-etapas-head" data-etapas-toggle>
+          <span><i class="ti ti-stack-2"></i> Etapas del proceso</span>
+          <i class="ti ti-chevron-${etapasColapsado ? "down" : "up"}"></i>
+        </div>
+        ${etapasBody}
+      </div>`;
+
     html += renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
   }
 
   html += renderFieldList(key, data.camposPersonalizados);
   html += renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, data.actividadCampos);
-  html += renderAutomatizaciones(key, data.automatizaciones || [], cfg.type);
+  html += renderAutomatizaciones(key, data.automatizaciones || [], data.autoTiempos || [], cfg.type);
 
   if (key === "cotizaciones") html += renderOrigenExternoCotizaciones(data.origenExterno);
 
@@ -101,8 +122,8 @@ function renderEntityForm(state, key) {
 function renderActividad(key, slot, label, act) {
   act = act || { descripcion: "", tiempo: "" };
   return `
-    <div class="field-block">
-      <label class="field-label">${label} <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
+    <div class="field-block pc-actividad">
+      <label class="field-label"><i class="ti ti-clock-bolt" style="color:#056AA1"></i> Actividad - ${label} <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
       <input type="text" data-act="${key}" data-act-slot="${slot}" data-act-prop="tiempo" value="${escapeAttr(act.tiempo || "")}" placeholder="Tiempo que tomará (ej. 2 h)" style="max-width:200px">
     </div>`;
 }
@@ -162,7 +183,7 @@ function renderPostventaForm(data) {
 function renderExitoStage(key, exito) {
   return `
     <div class="field-block">
-      <label class="field-label">Etapa de cierre exitoso <span style="font-weight:400;color:var(--text-secondary)">— única, no se agregan más</span></label>
+      <label class="field-label et-exito">Etapa de Éxito <span style="font-weight:400;color:var(--text-secondary)">— única, no se agregan más</span></label>
       <div class="stage-item">
         <input type="text" data-exito="${key}" data-exito-prop="titulo" value="${escapeAttr(exito.titulo || "")}" placeholder="Título de la etapa de éxito (ej. Venta ganada)">
         <textarea data-exito="${key}" data-exito-prop="descripcion" rows="2" placeholder="Descripción: qué ocurre al cerrar exitosamente">${escapeHtml(exito.descripcion || "")}</textarea>
@@ -170,54 +191,77 @@ function renderExitoStage(key, exito) {
     </div>`;
 }
 
+function campoPaso(key, i, prop, label, value, placeholder, isTextarea) {
+  const campo = isTextarea
+    ? `<textarea data-paso="${key}" data-paso-idx="${i}" data-paso-prop="${prop}" rows="2" placeholder="${escapeAttr(placeholder)}">${escapeHtml(value || "")}</textarea>`
+    : `<input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="${prop}" value="${escapeAttr(value || "")}" placeholder="${escapeAttr(placeholder)}">`;
+  return `<div class="paso-campo"><label class="paso-lbl">${label}</label>${campo}</div>`;
+}
+
 function renderPasoAPaso(key, pasos, label) {
+  const nombre = (label || "Prospectos").toLowerCase();
   const rows = pasos.map((p, i) => `
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
       <div class="paso-campos">
-        <textarea data-paso="${key}" data-paso-idx="${i}" data-paso-prop="accion" rows="2" placeholder="Acción / Descripción">${escapeHtml(p.accion || "")}</textarea>
-        <div class="row-flex">
-          <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="responsable" value="${escapeAttr(p.responsable || "")}" placeholder="Responsable">
-          <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="herramienta" value="${escapeAttr(p.herramienta || "")}" placeholder="Herramienta / Módulo">
-        </div>
-        <input type="text" data-paso="${key}" data-paso-idx="${i}" data-paso-prop="condicion" value="${escapeAttr(p.condicion || "")}" placeholder="Condición o Regla (opcional)">
+        ${campoPaso(key, i, "accion", "Explicación de lo que se realizará en la etapa", p.accion, "Describe qué ocurre en esta etapa", true)}
+        ${campoPaso(key, i, "responsable", "Responsable", p.responsable, "Ej. Asesor comercial", false)}
+        ${campoPaso(key, i, "herramienta", "Herramienta / Módulo", (p.herramienta !== undefined ? p.herramienta : "CRM / Prospecto"), "CRM / Prospecto", false)}
+        ${campoPaso(key, i, "condicion", "Condición o regla", p.condicion, "Opcional", false)}
       </div>
       <button class="icon-btn" data-paso-remove="${key}|${i}"><i class="ti ti-x"></i></button>
     </div>`).join("");
   return `
     <div class="field-block">
-      <label class="field-label">Ahora explica el paso a paso del proceso de ${(label || "Prospectos").toLowerCase()} <span style="font-weight:400;color:var(--text-secondary)">— desde que inicia hasta su fin (cierre exitoso o fallido)</span></label>
+      <div class="pc-pasoapaso-head">
+        <i class="ti ti-list-numbers"></i>
+        <div>
+          <div class="pc-pasoapaso-title">Ahora explica el paso a paso del proceso de ${nombre}</div>
+          <div class="pc-pasoapaso-sub">Desde que inicia y su progreso hasta su fin (cierre exitoso o fallido).</div>
+        </div>
+      </div>
       ${rows}
       <button class="add-btn" data-paso-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
     </div>`;
 }
 
-function renderAutomatizaciones(key, autos, tipo) {
+function renderAutomatizaciones(key, autos, autoTiempos, tipo) {
   const esPipeline = tipo === "pipeline";
   const rows = autos.map((a, i) => `
     <div class="rep-card">
-      <div class="row-flex" style="align-items:flex-start">
-        ${esPipeline
-          ? `<input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder='Título (ej. "Cambio de título", recordatorios…)'>`
-          : ""}
+      <div class="auto-head">
+        <span class="auto-num">${i + 1}</span>
         <button class="icon-btn" data-auto-remove="${key}|${i}" style="margin-left:auto"><i class="ti ti-x"></i></button>
       </div>
-      <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Qué hace">${escapeHtml(a.valor || "")}</textarea>
-      <div class="row-flex">
-        ${esPipeline
-          ? `<input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Etapa donde se ejecuta">`
-          : ""}
-        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="tiempo" value="${escapeAttr(a.tiempo || "")}" placeholder="Tiempo (ej. 1 h)" style="max-width:150px">
-      </div>
+      ${esPipeline ? `<div class="paso-campo"><label class="paso-lbl">Título</label>
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder='Ej. "Cambio de título y notificaciones"'></div>` : ""}
+      <div class="paso-campo"><label class="paso-lbl">¿Qué hace?</label>
+        <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Describe qué hace la automatización / proceso de negocio">${escapeHtml(a.valor || "")}</textarea></div>
+      ${esPipeline ? `<div class="paso-campo"><label class="paso-lbl">Etapa donde se ejecuta</label>
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Ej. Nuevo Prospecto"></div>` : ""}
     </div>`).join("");
+
+  const tiemposRows = (autoTiempos || []).map((t, i) => `
+    <div class="row-flex">
+      <input type="text" data-autot-idx="${i}" data-autot-prop="descripcion" value="${escapeAttr(t.descripcion || "")}" placeholder="Descripción (ej. Automatizaciones del pipeline)">
+      <input type="text" data-autot-idx="${i}" data-autot-prop="tiempo" value="${escapeAttr(t.tiempo || "")}" placeholder="Tiempo (ej. 3 h)" style="max-width:150px">
+      <button class="icon-btn" data-autot-remove="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
+
   const titulo = esPipeline
-    ? `Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— título, qué hace, etapa y tiempo</span>`
-    : `Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— qué hace y tiempo (opcional)</span>`;
+    ? `Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— título, qué hace y etapa</span>`
+    : `Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— qué hace</span>`;
   return `
     <div class="field-block">
-      <label class="field-label">${titulo}</label>
+      <label class="field-label pc-sec">${titulo}</label>
       ${rows}
       <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar ${esPipeline ? "automatización" : "proceso"}</button>
+
+      <div style="border-top:1px dashed #ddd;margin-top:14px;padding-top:12px">
+        <label class="field-label" style="font-size:13.5px"><i class="ti ti-clock"></i> Tiempo de las automatizaciones <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
+        ${tiemposRows || '<p style="font-size:12px;color:#999;margin:4px 0">Sin tiempos todavía.</p>'}
+        <button class="add-btn small" data-autot-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar tiempo</button>
+      </div>
     </div>`;
 }
 
@@ -239,6 +283,18 @@ export function renderRolesCRM(state) {
           <input type="text" data-rol-idx="${i}" data-rol-prop="observaciones" value="${escapeAttr(r.observaciones || "")}" placeholder="Para quién es este rol / notas"></div>
       </div>`;
   }).join("");
+  const chipsSup = ROL_SUPERVISOR.permisos.map((p) => `<div class="canal-chip on">${p}</div>`).join("");
+  const supFijo = `
+    <div class="rep-card" style="border-left:3px solid #056AA1">
+      <div class="rep-head">
+        <i class="ti ti-shield-check" style="color:#056AA1;font-size:18px"></i>
+        <b style="flex:1">${ROL_SUPERVISOR.rol}</b>
+        <span style="font-size:11px;color:#8a8a8a"><i class="ti ti-lock"></i> fijo</span>
+      </div>
+      <div class="rep-field"><label>Permisos</label><div class="canal-grid">${chipsSup}</div></div>
+      <div class="rep-field"><label>Observaciones</label>
+        <p class="step-helper" style="margin:2px 0 0">${escapeHtml(ROL_SUPERVISOR.observaciones)}</p></div>
+    </div>`;
   return `
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;margin-bottom:16px;background:#fafafa">
       <p class="field-label" style="font-size:15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" data-rol-toggle>
@@ -246,6 +302,7 @@ export function renderRolesCRM(state) {
         <i class="ti ${rolesColapsado ? "ti-chevron-down" : "ti-chevron-up"}"></i>
       </p>
       ${rolesColapsado ? "" : `
+      ${supFijo}
       ${rows}
       <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>`}
     </div>`;
@@ -309,6 +366,25 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   const rolToggle = container.querySelector("[data-rol-toggle]");
   if (rolToggle) rolToggle.addEventListener("click", () => { rolesColapsado = !rolesColapsado; onChange({ rerender: true }); });
 
+  // Toggle minimizar el conjunto de etapas
+  const etToggle = container.querySelector("[data-etapas-toggle]");
+  if (etToggle) etToggle.addEventListener("click", () => { etapasColapsado = !etapasColapsado; onChange({ rerender: true }); });
+
+  // Toggle minimizar todo el proceso (form de la entidad)
+  const formToggle = container.querySelector("[data-form-toggle]");
+  if (formToggle) formToggle.addEventListener("click", () => { formColapsado = !formColapsado; onChange({ rerender: true }); });
+
+  // Tiempos de automatizaciones (campo múltiple) — sobre la entidad activa
+  const autoT = () => { const e = state.entidades[activeEntityTab]; if (!Array.isArray(e.autoTiempos)) e.autoTiempos = []; return e.autoTiempos; };
+  container.querySelectorAll("[data-autot-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    const i = parseInt(el.getAttribute("data-autot-idx"), 10); const arr = autoT();
+    if (!arr[i]) arr[i] = { descripcion: "", tiempo: "" };
+    arr[i][el.getAttribute("data-autot-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  const autotAdd = container.querySelector("[data-autot-add]");
+  if (autotAdd) autotAdd.addEventListener("click", () => { autoT().push({ descripcion: "", tiempo: "" }); onChange({ rerender: true }); });
+  container.querySelectorAll("[data-autot-remove]").forEach((el) => el.addEventListener("click", () => { autoT().splice(parseInt(el.getAttribute("data-autot-remove"), 10), 1); onChange({ rerender: true }); }));
+
   // Etapa de cierre exitoso (única por entidad)
   container.querySelectorAll("[data-exito-prop]").forEach((el) => {
     el.addEventListener("input", (e) => {
@@ -365,7 +441,7 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   }));
   container.querySelectorAll("[data-paso-add]").forEach((el) => el.addEventListener("click", () => {
     const key = el.getAttribute("data-paso-add");
-    (state.entidades[key].flujoPasos = state.entidades[key].flujoPasos || []).push({ accion: "", responsable: "", herramienta: "", condicion: "" });
+    (state.entidades[key].flujoPasos = state.entidades[key].flujoPasos || []).push({ accion: "", responsable: "", herramienta: "CRM / Prospecto", condicion: "" });
     onChange({ rerender: true });
   }));
   container.querySelectorAll("[data-paso-remove]").forEach((el) => el.addEventListener("click", () => {

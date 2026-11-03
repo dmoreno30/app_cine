@@ -3,7 +3,7 @@ import { escapeAttr, escapeHtml } from "../utils.js";
 function nombreDe(x) { return typeof x === "string" ? x : (x.nombre || ""); }
 function descDe(x) { return typeof x === "string" ? "" : (x.descripcion || ""); }
 
-export function renderStageList(entityKey, listKey, label, list) {
+export function renderStageList(entityKey, listKey, label, list, labelClass) {
   const rows = (list || []).map((val, i) => `
     <div class="stage-item">
       <div class="row-flex">
@@ -16,7 +16,7 @@ export function renderStageList(entityKey, listKey, label, list) {
     </div>`).join("");
   return `
     <div class="field-block">
-      <label class="field-label">${label}</label>
+      <label class="field-label ${labelClass || ""}">${label}</label>
       ${rows}
       <button class="add-btn" data-add-stage="${entityKey}|${listKey}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar etapa</button>
     </div>`;

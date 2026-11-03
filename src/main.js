@@ -92,8 +92,9 @@ function normalizar(s) {
       e.automatizaciones = e.automatizaciones.map((a) => ({ parametro: a.parametro || "", valor: a.valor || "", etapa: a.etapa || "", tiempo: a.tiempo || "" }));
     }
     if (Array.isArray(e.camposPersonalizados)) {
-      e.camposPersonalizados = e.camposPersonalizados.map((f) => ({ nombre: f.nombre || "", tipo: f.tipo || "Texto", personalizado: f.personalizado !== false }));
+      e.camposPersonalizados = e.camposPersonalizados.map((f) => ({ nombre: f.nombre || "", tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio, valores: f.valores || "" }));
     }
+    if (!Array.isArray(e.autoTiempos)) e.autoTiempos = [{ descripcion: "", tiempo: "" }];
   });
   return out;
 }
