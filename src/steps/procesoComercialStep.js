@@ -11,8 +11,8 @@ import { escapeHtml, escapeAttr } from "../utils.js";
 let expandedKey = null;
 let activeEntityTab = null;
 let rolesColapsado = false;   // minimizar el bloque de Roles y permisos
-let etapasColapsado = false;  // minimizar todo el conjunto de etapas
 let formColapsado = false;    // minimizar todo el proceso (form de la entidad)
+let activeSection = null;     // pestaña de sección activa dentro de la entidad
 
 function entidadesHabilitadasEnOrden(state) {
   return ORDEN_ENTIDADES.filter((k) => state.entidadesHabilitadas[k]);
@@ -82,41 +82,50 @@ function renderEntityForm(state, key) {
     <p class="step-helper">${cfg.helper}</p>`;
   if (formColapsado) return cabecera;
 
-  let html = cabecera;
+  // Secciones en pestañas para evitar el scroll infinito.
+  const secciones = cfg.type === "pipeline"
+    ? [
+        { key: "flujo", label: "Flujo general", icon: "ti-route" },
+        { key: "etapas", label: "Etapas", icon: "ti-stack-2" },
+        { key: "pasos", label: "Paso a paso", icon: "ti-list-numbers" },
+        { key: "campos", label: "Campos", icon: "ti-forms" },
+        { key: "autos", label: "Automatizaciones", icon: "ti-settings-automation" }
+      ]
+    : [
+        { key: "campos", label: "Campos", icon: "ti-forms" },
+        { key: "autos", label: "Procesos de negocio", icon: "ti-settings-automation" }
+      ];
+  if (!activeSection || !secciones.some((s) => s.key === activeSection)) activeSection = secciones[0].key;
+  const tabsBar = secciones.map((s) => `
+    <div class="sec-tab ${s.key === activeSection ? "active" : ""}" data-sec-tab="${s.key}"><i class="ti ${s.icon}"></i> ${s.label}</div>`).join("");
 
-  if (cfg.type === "pipeline") {
-    // El flujo va primero: entender la narrativa completa antes de pedir etapas sueltas.
-    html += `
+  let body = "";
+  if (activeSection === "flujo") {
+    body = `
       <div class="field-block">
         <label class="field-label pc-sec">Flujo del proceso de venta (${cfg.label.toLowerCase()}) <span style="color:#d00">*</span></label>
-        <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="3" placeholder="Cuéntanos, en tus palabras, cómo se mueve un registro desde que entra hasta que se cierra o se descarta">${escapeHtml(data.flujo)}</textarea>
-      </div>`;
-
-    // Conjunto de etapas (colapsable como bloque)
-    const etapasBody = etapasColapsado ? "" : `
+        <p class="step-helper">En tus palabras, cómo se mueve un registro desde que entra hasta que se cierra o se descarta.</p>
+        <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="5" placeholder="Describe el flujo comercial completo…">${escapeHtml(data.flujo)}</textarea>
+      </div>
+      ${key === "cotizaciones" ? renderOrigenExternoCotizaciones(data.origenExterno) : ""}`;
+  } else if (activeSection === "etapas") {
+    body = `
       ${renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso, "et-progreso")}
       ${renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo, "et-descarte")}
       ${renderExitoStage(key, data.exito || { titulo: "", descripcion: "" })}
       ${renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, data.actividadEtapas)}`;
-    html += `
-      <div class="pc-etapas">
-        <div class="pc-etapas-head" data-etapas-toggle>
-          <span><i class="ti ti-stack-2"></i> Etapas del proceso</span>
-          <i class="ti ti-chevron-${etapasColapsado ? "down" : "up"}"></i>
-        </div>
-        ${etapasBody}
-      </div>`;
-
-    html += renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
+  } else if (activeSection === "pasos") {
+    body = renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
+  } else if (activeSection === "campos") {
+    body = renderFieldList(key, data.camposPersonalizados)
+      + renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, data.actividadCampos);
+  } else if (activeSection === "autos") {
+    body = renderAutomatizaciones(key, data.automatizaciones || [], data.autoTiempos || [], cfg.type);
   }
 
-  html += renderFieldList(key, data.camposPersonalizados);
-  html += renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, data.actividadCampos);
-  html += renderAutomatizaciones(key, data.automatizaciones || [], data.autoTiempos || [], cfg.type);
-
-  if (key === "cotizaciones") html += renderOrigenExternoCotizaciones(data.origenExterno);
-
-  return html;
+  return `${cabecera}
+    <div class="sec-tabs">${tabsBar}</div>
+    <div class="sec-body">${body}</div>`;
 }
 
 function renderActividad(key, slot, label, act) {
@@ -327,8 +336,14 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   container.querySelectorAll("[data-entity-tab]").forEach((el) => {
     el.addEventListener("click", () => {
       activeEntityTab = el.getAttribute("data-entity-tab");
+      activeSection = null; // volver a la primera sección al cambiar de entidad
       onChange({ rerender: true });
     });
+  });
+
+  // Pestañas de sección dentro de la entidad
+  container.querySelectorAll("[data-sec-tab]").forEach((el) => {
+    el.addEventListener("click", () => { activeSection = el.getAttribute("data-sec-tab"); onChange({ rerender: true }); });
   });
 
   // Explicación global del proceso comercial
@@ -367,10 +382,6 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   // Toggle minimizar Roles y permisos
   const rolToggle = container.querySelector("[data-rol-toggle]");
   if (rolToggle) rolToggle.addEventListener("click", () => { rolesColapsado = !rolesColapsado; onChange({ rerender: true }); });
-
-  // Toggle minimizar el conjunto de etapas
-  const etToggle = container.querySelector("[data-etapas-toggle]");
-  if (etToggle) etToggle.addEventListener("click", () => { etapasColapsado = !etapasColapsado; onChange({ rerender: true }); });
 
   // Toggle minimizar todo el proceso (form de la entidad)
   const formToggle = container.querySelector("[data-form-toggle]");

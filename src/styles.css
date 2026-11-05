@@ -342,3 +342,12 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 /* Paso a paso en columnas (compacto) */
 .paso-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 @media (max-width:560px){ .paso-grid-2{ grid-template-columns:1fr; } }
+
+/* Pestañas de sección dentro de cada entidad (Proceso Comercial) */
+.sec-tabs{ display:flex; flex-wrap:wrap; gap:6px; margin:14px 0 16px; padding:5px; background:#f1f5f8; border:1px solid #e4ebf0; border-radius:12px; }
+.sec-tab{ display:inline-flex; align-items:center; gap:6px; padding:9px 14px; border-radius:9px; font-size:13.5px; font-weight:600; color:#5a6b74; cursor:pointer; transition:all .12s; white-space:nowrap; }
+.sec-tab i{ font-size:16px; }
+.sec-tab:hover{ color:#1b2b33; background:#e7eef3; }
+.sec-tab.active{ background:#056AA1; color:#fff; box-shadow:0 2px 8px rgba(5,106,161,.25); }
+.sec-body{ animation:secfade .18s ease; }
+@keyframes secfade{ from{opacity:.5} to{opacity:1} }
