@@ -338,3 +338,7 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 /* Campo de valores de lista */
 .campo-item{ margin-bottom:6px; }
 .campo-valores{ margin:2px 0 8px 2px; }
+
+/* Paso a paso en columnas (compacto) */
+.paso-grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media (max-width:560px){ .paso-grid-2{ grid-template-columns:1fr; } }

@@ -4,10 +4,27 @@ import { escapeHtml, escapeAttr } from "../utils.js";
 const cfgDe = (tipo) => CANALES.find((c) => c.key === tipo) || {};
 const labelDe = (tipo) => cfgDe(tipo).label || tipo;
 const iconDe = (tipo) => cfgDe(tipo).icon || "ti-plug-connected";
-const TEXTO_FIJO = { facebook: "facebook", instagram: "facebook" }; // ambos usan el texto de FB/IG
+const USA_DESC = new Set(["facebook", "instagram", "formularios"]); // canales con descripción + consideración por defecto
 
-function bloqueFijo(html) {
-  return `<div class="cap-fijo"><i class="ti ti-lock" style="font-size:12px;margin-right:4px;color:#8a8a8a"></i>${html}</div>`;
+// Carga los textos estándar como VALOR por defecto (editable) solo si están vacíos.
+function seedCaptacion(state) {
+  const cap = state.captacion;
+  const cli = state.cliente || "";
+  if (!Array.isArray(cap.canales)) cap.canales = [];
+  if (!Array.isArray(cap.conexiones)) cap.conexiones = [];
+  if (!(cap.intro || "").trim()) cap.intro = conCliente(CAPTACION_TEXTOS.intro, cli);
+  if (!cap.conexiones.length) cap.conexiones = CAPTACION_ACTIVIDADES.map((a) => ({ titulo: a, tiempo: "" }));
+  if (!state.consideraciones) state.consideraciones = {};
+  if (!(state.consideraciones.captacion || "").trim()) state.consideraciones.captacion = conCliente(CAPTACION_TEXTOS.consideracionGeneral, cli);
+  if (!state.cip) state.cip = {};
+  if (!Array.isArray(state.cip.captacion) || !state.cip.captacion.length) state.cip.captacion = CAPTACION_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo }));
+  // Descripción/consideración por canal (FB/IG/Formularios) si no existe todavía.
+  cap.canales.forEach((c) => {
+    if (USA_DESC.has(c.tipo)) {
+      if (c.descripcion === undefined) c.descripcion = c.tipo === "formularios" ? conCliente(CAPTACION_TEXTOS.formularios, cli) : CAPTACION_TEXTOS.facebook;
+      if (c.consideracion === undefined) c.consideracion = c.tipo === "formularios" ? CAPTACION_TEXTOS.formulariosConsideracion : CAPTACION_TEXTOS.facebookConsideracion;
+    }
+  });
 }
 
 function renderCanalCard(c, idx) {
@@ -23,25 +40,18 @@ function renderCanalCard(c, idx) {
     </div>`;
   if (col) return `<div class="rep-card">${header}</div>`;
 
-  // Facebook / Instagram → texto y consideración fijos
-  if (c.tipo === "facebook" || c.tipo === "instagram") {
+  // FB / IG / Formularios → descripción y consideración (editables, con texto por defecto)
+  if (USA_DESC.has(c.tipo)) {
     return `
       <div class="rep-card">${header}
-        ${bloqueFijo(`<p style="margin:0">${escapeHtml(CAPTACION_TEXTOS.facebook)}</p>`)}
-        ${bloqueFijo(`<b>Consideración:</b> ${escapeHtml(CAPTACION_TEXTOS.facebookConsideracion)}`)}
+        <div class="rep-field"><label>Descripción (va al iCINE)</label>
+          <textarea data-cap-desc="${idx}" rows="3">${escapeHtml(c.descripcion || "")}</textarea></div>
+        <div class="rep-field"><label>Consideración</label>
+          <input type="text" data-cap-consid="${idx}" value="${escapeAttr(c.consideracion || "")}"></div>
       </div>`;
   }
 
-  // Formularios del CRM → texto y consideración fijos
-  if (c.tipo === "formularios") {
-    return `
-      <div class="rep-card">${header}
-        ${bloqueFijo(`<p style="margin:0">${escapeHtml(CAPTACION_TEXTOS.formularios)}</p>`)}
-        ${bloqueFijo(`<b>Consideración:</b> ${escapeHtml(CAPTACION_TEXTOS.formulariosConsideracion)}`)}
-      </div>`;
-  }
-
-  // Widget → solo página web (sin tiempo)
+  // Widget → página web (editable, sin tiempo)
   if (cfg.esWidget) {
     return `
       <div class="rep-card">${header}
@@ -50,7 +60,7 @@ function renderCanalCard(c, idx) {
       </div>`;
   }
 
-  // TikTok / LinkedIn → conector externo; resto → flujo simple (SIN tiempo)
+  // TikTok / LinkedIn → conector; resto → flujo simple (en columnas, sin tiempo)
   const conectorField = cfg.necesitaConector ? `
     <div class="rep-field"><label>¿Con qué conector externo se hará la conexión? <span style="color:#c00">*</span></label>
       <input type="text" data-cap-conector="${idx}" value="${escapeAttr(c.conector || "")}" placeholder="Ej. conector de un tercero">
@@ -59,9 +69,14 @@ function renderCanalCard(c, idx) {
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
       <div class="paso-campos">
-        <textarea data-cf="${idx}" data-cf-i="${i}" data-cf-prop="accion" rows="2" placeholder="Acción / Descripción">${escapeHtml(p.accion || "")}</textarea>
-        <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="responsable" value="${escapeAttr(p.responsable || "")}" placeholder="Responsable">
-        <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="condicion" value="${escapeAttr(p.condicion || "")}" placeholder="Condición o regla (opcional)">
+        <div class="paso-campo"><label class="paso-lbl">¿Qué se realiza en este paso?</label>
+          <textarea data-cf="${idx}" data-cf-i="${i}" data-cf-prop="accion" rows="2">${escapeHtml(p.accion || "")}</textarea></div>
+        <div class="paso-grid-2">
+          <div class="paso-campo"><label class="paso-lbl">Responsable</label>
+            <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="responsable" value="${escapeAttr(p.responsable || "")}"></div>
+          <div class="paso-campo"><label class="paso-lbl">Condición o regla</label>
+            <input type="text" data-cf="${idx}" data-cf-i="${i}" data-cf-prop="condicion" value="${escapeAttr(p.condicion || "")}" placeholder="Opcional"></div>
+        </div>
       </div>
       <button class="icon-btn" data-cf-remove="${idx}|${i}"><i class="ti ti-x"></i></button>
     </div>`).join("");
@@ -74,38 +89,37 @@ function renderCanalCard(c, idx) {
     </div>`;
 }
 
-// Fija en el estado los textos/valores estándar de Captación (idempotente).
-function fijarEstandar(state) {
-  const cap = state.captacion;
-  cap.intro = conCliente(CAPTACION_TEXTOS.intro, state.cliente);
-  if (!state.consideraciones) state.consideraciones = {};
-  state.consideraciones.captacion = conCliente(CAPTACION_TEXTOS.consideracionGeneral, state.cliente);
-  if (!state.cip) state.cip = {};
-  state.cip.captacion = CAPTACION_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo }));
-}
-
 export function renderCaptacionStep(state) {
   const cap = state.captacion;
-  if (!Array.isArray(cap.canales)) cap.canales = [];
-  fijarEstandar(state);
+  seedCaptacion(state);
 
   const menu = CANALES.map((c) => `<div class="canal-chip" data-cap-add="${c.key}"><i class="ti ${c.icon}"></i>${c.label}</div>`).join("");
   const cards = cap.canales.length
     ? cap.canales.map((c, i) => renderCanalCard(c, i)).join("")
     : '<p style="font-size:13px;color:#888;margin:4px 0">Todavía no agregaste canales. Elegí uno del menú (podés sumar varios del mismo tipo).</p>';
 
-  const actividades = CAPTACION_ACTIVIDADES.map((a) => `<li>${escapeHtml(a)}</li>`).join("");
-  const capacitacion = CAPTACION_CIP.map((c) => `<li>${escapeHtml(c.titulo)} <b>— ${escapeHtml(c.tiempo)}</b></li>`).join("");
-  const introClienteNota = (state.cliente || "").trim() ? "" : `<p class="step-helper" style="margin-top:4px;color:#8a5a00"><i class="ti ti-info-circle"></i> "XX" se reemplazará por el nombre del cliente cuando lo completes en "Detalles de la empresa".</p>`;
+  const conex = cap.conexiones.map((x, i) => `
+    <div class="row-flex">
+      <input type="text" data-conx-i="${i}" data-conx-prop="titulo" value="${escapeAttr(x.titulo || "")}" placeholder="Actividad">
+      <input type="text" data-conx-i="${i}" data-conx-prop="tiempo" value="${escapeAttr(x.tiempo || "")}" placeholder="Tiempo (opcional)" style="max-width:150px">
+      <button class="icon-btn" data-conx-remove="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
+
+  const cip = (state.cip && Array.isArray(state.cip.captacion)) ? state.cip.captacion : [];
+  const capRows = cip.map((c, i) => `
+    <div class="row-flex">
+      <input type="text" data-capcip-i="${i}" data-capcip-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación">
+      <input type="text" data-capcip-i="${i}" data-capcip-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 1 hora)" style="max-width:150px">
+      <button class="icon-btn" data-capcip-remove="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
 
   return `
     <p class="step-title">Captación de clientes</p>
-    <p class="step-helper">Agregá los canales por donde llegan los clientes. Los textos estándar ya están definidos y se incluyen en el iCINE.</p>
+    <p class="step-helper">Los textos vienen con un contenido estándar que podés editar libremente. Todo lo que escribas acá va al iCINE.</p>
 
     <div class="field-block">
-      <label class="field-label">Texto introductorio <span style="font-weight:400;color:var(--text-secondary)">— fijo, va al iCINE</span></label>
-      ${bloqueFijo(conCliente(CAPTACION_TEXTOS.intro, state.cliente).split(/\n\n+/).map((p) => `<p style="margin:0 0 8px">${escapeHtml(p)}</p>`).join(""))}
-      ${introClienteNota}
+      <label class="field-label">Texto introductorio <span style="font-weight:400;color:var(--text-secondary)">— editable, va al iCINE</span></label>
+      <textarea data-cap-intro rows="6">${escapeHtml(cap.intro || "")}</textarea>
     </div>
 
     <div class="field-block">
@@ -122,32 +136,41 @@ export function renderCaptacionStep(state) {
     </div>
 
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
-      <label class="field-label"><i class="ti ti-link"></i> Actividades de creación y conexión de canales en general <span style="font-weight:400;color:var(--text-secondary)">— fijas, van al iCINE</span></label>
-      <ul class="cap-lista">${actividades}</ul>
+      <label class="field-label"><i class="ti ti-link"></i> Actividades de creación y conexión de canales en general <span style="font-weight:400;color:var(--text-secondary)">— editable, va al iCINE</span></label>
+      ${conex || '<p style="font-size:12px;color:#999;margin:4px 0">Sin actividades.</p>'}
+      <button class="add-btn" data-conx-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar actividad</button>
     </div>
 
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
-      <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="font-weight:400;color:var(--text-secondary)">— fija</span></label>
-      <ul class="cap-lista">${capacitacion}</ul>
+      <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="font-weight:400;color:var(--text-secondary)">— editable</span></label>
+      ${capRows}
+      <button class="add-btn" data-capcip-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar capacitación</button>
     </div>
 
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:14px;background:#fafafa">
-      <label class="field-label"><i class="ti ti-note"></i> Consideraciones <span style="font-weight:400;color:var(--text-secondary)">— fijas, van al iCINE</span></label>
-      ${bloqueFijo(conCliente(CAPTACION_TEXTOS.consideracionGeneral, state.cliente).split(/\n\n+/).map((p) => `<p style="margin:0 0 8px">${escapeHtml(p)}</p>`).join(""))}
+      <label class="field-label"><i class="ti ti-note"></i> Consideraciones <span style="font-weight:400;color:var(--text-secondary)">— editable, va al iCINE</span></label>
+      <textarea data-cap-consideraciones rows="6">${escapeHtml((state.consideraciones && state.consideraciones.captacion) || "")}</textarea>
     </div>`;
 }
 
 export function attachCaptacionListeners(container, state, onChange) {
   const cap = state.captacion;
-  if (!Array.isArray(cap.canales)) cap.canales = [];
-  fijarEstandar(state);
+  seedCaptacion(state);
+
+  const intro = container.querySelector("[data-cap-intro]");
+  if (intro) intro.addEventListener("input", (e) => { cap.intro = e.target.value; onChange({ rerender: false }); });
+  const cons = container.querySelector("[data-cap-consideraciones]");
+  if (cons) cons.addEventListener("input", (e) => { if (!state.consideraciones) state.consideraciones = {}; state.consideraciones.captacion = e.target.value; onChange({ rerender: false }); });
 
   container.querySelectorAll("[data-cap-add]").forEach((el) => el.addEventListener("click", () => {
     const tipo = el.getAttribute("data-cap-add"); const cfg = CANALES.find((c) => c.key === tipo) || {};
     const inst = { tipo, nombre: "", colapsado: false };
     if (cfg.esWidget) { inst.url = ""; inst.flujo = []; }
-    else if (tipo === "facebook" || tipo === "instagram" || tipo === "formularios") { inst.flujo = []; }
-    else { if (cfg.necesitaConector) inst.conector = ""; inst.flujo = [{ accion: "", responsable: "", condicion: "", tiempo: "" }]; }
+    else if (USA_DESC.has(tipo)) {
+      inst.flujo = [];
+      inst.descripcion = tipo === "formularios" ? conCliente(CAPTACION_TEXTOS.formularios, state.cliente) : CAPTACION_TEXTOS.facebook;
+      inst.consideracion = tipo === "formularios" ? CAPTACION_TEXTOS.formulariosConsideracion : CAPTACION_TEXTOS.facebookConsideracion;
+    } else { if (cfg.necesitaConector) inst.conector = ""; inst.flujo = [{ accion: "", responsable: "", condicion: "", tiempo: "" }]; }
     cap.canales.push(inst); onChange({ rerender: true });
   }));
   container.querySelectorAll("[data-cap-remove]").forEach((el) => el.addEventListener("click", () => { cap.canales.splice(parseInt(el.getAttribute("data-cap-remove"), 10), 1); onChange({ rerender: true }); }));
@@ -158,6 +181,8 @@ export function attachCaptacionListeners(container, state, onChange) {
   container.querySelectorAll("[data-cap-nombre]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-nombre"), 10)].nombre = e.target.value; onChange({ rerender: false }); }));
   container.querySelectorAll("[data-cap-url]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-url"), 10)].url = e.target.value; onChange({ rerender: false }); }));
   container.querySelectorAll("[data-cap-conector]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-conector"), 10)].conector = e.target.value; onChange({ rerender: false }); }));
+  container.querySelectorAll("[data-cap-desc]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-desc"), 10)].descripcion = e.target.value; onChange({ rerender: false }); }));
+  container.querySelectorAll("[data-cap-consid]").forEach((el) => el.addEventListener("input", (e) => { cap.canales[parseInt(el.getAttribute("data-cap-consid"), 10)].consideracion = e.target.value; onChange({ rerender: false }); }));
 
   container.querySelectorAll("[data-cf-prop]").forEach((el) => el.addEventListener("input", (e) => {
     const idx = parseInt(el.getAttribute("data-cf"), 10), i = parseInt(el.getAttribute("data-cf-i"), 10);
@@ -171,4 +196,23 @@ export function attachCaptacionListeners(container, state, onChange) {
     const [idx, i] = el.getAttribute("data-cf-remove").split("|");
     cap.canales[parseInt(idx, 10)].flujo.splice(parseInt(i, 10), 1); onChange({ rerender: true });
   }));
+
+  // Actividades (editable)
+  container.querySelectorAll("[data-conx-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    cap.conexiones[parseInt(el.getAttribute("data-conx-i"), 10)][el.getAttribute("data-conx-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  const addConx = container.querySelector("[data-conx-add]");
+  if (addConx) addConx.addEventListener("click", () => { cap.conexiones.push({ titulo: "", tiempo: "" }); onChange({ rerender: true }); });
+  container.querySelectorAll("[data-conx-remove]").forEach((el) => el.addEventListener("click", () => { cap.conexiones.splice(parseInt(el.getAttribute("data-conx-remove"), 10), 1); onChange({ rerender: true }); }));
+
+  // Capacitación (editable)
+  const cipArr = () => { if (!state.cip) state.cip = {}; if (!Array.isArray(state.cip.captacion)) state.cip.captacion = []; return state.cip.captacion; };
+  container.querySelectorAll("[data-capcip-prop]").forEach((el) => el.addEventListener("input", (e) => {
+    const i = parseInt(el.getAttribute("data-capcip-i"), 10); const arr = cipArr();
+    if (!arr[i]) arr[i] = { titulo: "", tiempo: "" };
+    arr[i][el.getAttribute("data-capcip-prop")] = e.target.value; onChange({ rerender: false });
+  }));
+  const addCip = container.querySelector("[data-capcip-add]");
+  if (addCip) addCip.addEventListener("click", () => { cipArr().push({ titulo: "", tiempo: "" }); onChange({ rerender: true }); });
+  container.querySelectorAll("[data-capcip-remove]").forEach((el) => el.addEventListener("click", () => { cipArr().splice(parseInt(el.getAttribute("data-capcip-remove"), 10), 1); onChange({ rerender: true }); }));
 }

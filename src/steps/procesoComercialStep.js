@@ -204,9 +204,11 @@ function renderPasoAPaso(key, pasos, label) {
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
       <div class="paso-campos">
-        ${campoPaso(key, i, "accion", "Explicación de lo que se realizará en la etapa", p.accion, "Describe qué ocurre en esta etapa", true)}
-        ${campoPaso(key, i, "responsable", "Responsable", p.responsable, "Ej. Asesor comercial", false)}
-        ${campoPaso(key, i, "herramienta", "Herramienta / Módulo", (p.herramienta !== undefined ? p.herramienta : "CRM / Prospecto"), "CRM / Prospecto", false)}
+        ${campoPaso(key, i, "accion", "¿Qué se realiza en esta etapa?", p.accion, "Describe la acción de esta etapa", true)}
+        <div class="paso-grid-2">
+          ${campoPaso(key, i, "responsable", "Responsable", p.responsable, "Ej. Asesor comercial", false)}
+          ${campoPaso(key, i, "herramienta", "Herramienta / Módulo", (p.herramienta !== undefined ? p.herramienta : "CRM / Prospecto"), "CRM / Prospecto", false)}
+        </div>
         ${campoPaso(key, i, "condicion", "Condición o regla", p.condicion, "Opcional", false)}
       </div>
       <button class="icon-btn" data-paso-remove="${key}|${i}"><i class="ti ti-x"></i></button>

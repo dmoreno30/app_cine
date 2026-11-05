@@ -378,6 +378,8 @@ function buildCaptacion(cap) {
     conector: (c.conector || "").trim(),
     url: (c.url || "").trim(),
     tiempo: (c.tiempo || "").trim(),
+    descripcion: (c.descripcion || "").trim(),
+    consideracion: (c.consideracion || "").trim(),
     flujo: (c.flujo || [])
       .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
       .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), condicion: (p.condicion || "").trim(), tiempo: (p.tiempo || "").trim() }))
@@ -524,13 +526,6 @@ export function buildCanonicalJSON(state) {
         consideraciones: (r.consideraciones || "").trim()
       }))
   };
-
-  // Captación: textos, capacitación y consideraciones FIJAS y estándar (siempre al iCINE).
-  if (state.desarrollos && state.desarrollos.captacion) {
-    out.captacionDeClientes.intro = conCliente(CAPTACION_TEXTOS.intro, out.cliente);
-    out.consideraciones.captacion = conCliente(CAPTACION_TEXTOS.consideracionGeneral, out.cliente);
-    out.cip.captacion = CAPTACION_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo }));
-  }
 
   return out;
 }
