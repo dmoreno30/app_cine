@@ -41,25 +41,18 @@ function validar(state) {
   const d = state.desarrollos || {};
   if (d.captacion) {
     const cap = state.captacion || {};
-    if (!(cap.intro || "").trim()) faltan.push("Definición del proceso de captación");
+    if (!(cap.intro || "").trim()) faltan.push("Texto introductorio de captación");
     (cap.canales || []).forEach((c) => {
       const nom = (c.nombre || "").trim() || "canal";
       if (c.tipo === "widget") {
         if (!(c.url || "").trim()) faltan.push(`Página web del widget “${nom}”`);
-        if (!(c.tiempo || "").trim()) faltan.push(`Tiempo del widget “${nom}”`);
-      } else {
-        if ((c.tipo === "tiktok" || c.tipo === "linkedin") && !(c.conector || "").trim())
-          faltan.push(`Conector externo para “${nom}”`);
-        const pasos = (c.flujo || []).filter((p) => (p.accion || "").trim() || (p.responsable || "").trim() || (p.tiempo || "").trim());
-        if (!pasos.length) faltan.push(`Al menos un paso de flujo en “${nom}”`);
-        pasos.forEach((p, i) => {
-          if (!(p.accion || "").trim()) faltan.push(`Acción del paso ${i + 1} en “${nom}”`);
-          if (!(p.tiempo || "").trim()) faltan.push(`Tiempo del paso ${i + 1} en “${nom}”`);
-        });
+      } else if (c.tipo === "tiktok" || c.tipo === "linkedin") {
+        if (!(c.conector || "").trim()) faltan.push(`Conector externo para “${nom}”`);
       }
+      // FB/IG/Formularios (descripción) y demás canales no exigen pasos de flujo.
     });
-    const conx = (cap.conexiones || []).filter((x) => (x.titulo || "").trim() && (x.tiempo || "").trim());
-    if (!conx.length) faltan.push("Al menos una actividad de conexión de canales abiertos (título + tiempo)");
+    const conx = (cap.conexiones || []).filter((x) => (x.titulo || "").trim());
+    if (!conx.length) faltan.push("Al menos una actividad de creación y conexión de canales");
   }
   if (!(state.pruebas && (state.pruebas.qa || "").trim())) faltan.push("Tiempo de Pruebas internas QA");
   if (!(state.pruebas && (state.pruebas.alpha || "").trim())) faltan.push("Tiempo de Pruebas Alpha con el cliente");
