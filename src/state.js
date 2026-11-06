@@ -174,7 +174,11 @@ export function defaultState() {
       roles: []      // [{ rol, permisos:[], observaciones }]
     },
     // Roles y permisos del CRM (tabla 2.4 del iCINE)
-    roles: [{ rol: "", permisos: [], observaciones: "" }]
+    roles: [
+      { rol: ROL_SUPERVISOR.rol, permisos: ROL_SUPERVISOR.permisos.slice(), observaciones: ROL_SUPERVISOR.observaciones },
+      { rol: "", permisos: [], observaciones: "" }
+    ],
+    rolesTiempo: ""   // tiempo total de creación de roles (se suma al iCINE)
   };
 }
 
@@ -442,16 +446,12 @@ export function buildCanonicalJSON(state) {
     rrhh: buildRRHH(state.rrhh),
     api: buildAPI(state.api),
     captacionDeClientes: buildCaptacion(state.captacion),
-    procesoComercial: { intro: (state.procesoIntro || "").trim(), entidades: {}, roles: [] }
+    procesoComercial: { intro: (state.procesoIntro || "").trim(), entidades: {}, roles: [], rolesTiempo: (state.rolesTiempo || "").trim() }
   };
 
   out.procesoComercial.roles = (state.roles || [])
     .filter((r) => (r.rol || "").trim())
     .map((r) => ({ rol: r.rol.trim(), permisos: (r.permisos || []).slice(), observaciones: (r.observaciones || "").trim() }));
-  // Rol fijo "Supervisor" siempre presente (al inicio, sin duplicar).
-  if (!out.procesoComercial.roles.some((r) => (r.rol || "").toLowerCase() === "supervisor")) {
-    out.procesoComercial.roles.unshift({ rol: ROL_SUPERVISOR.rol, permisos: ROL_SUPERVISOR.permisos.slice(), observaciones: ROL_SUPERVISOR.observaciones });
-  }
 
   Object.keys(ENTIDADES).forEach((key) => {
     if (!state.entidadesHabilitadas[key]) return;

@@ -213,7 +213,7 @@ function renderPasoAPaso(key, pasos, label) {
     <div class="paso-item">
       <div class="paso-num">${i + 1}</div>
       <div class="paso-campos">
-        ${campoPaso(key, i, "accion", "¿Qué se realiza en esta etapa?", p.accion, "Describe la acción de esta etapa", true)}
+        ${campoPaso(key, i, "accion", "Siguiente paso", p.accion, "Describe el paso / acción a realizar", true)}
         <div class="paso-grid-2">
           ${campoPaso(key, i, "responsable", "Responsable", p.responsable, "Ej. Asesor comercial", false)}
           ${campoPaso(key, i, "herramienta", "Herramienta / Módulo", (p.herramienta !== undefined ? p.herramienta : "CRM / Prospecto"), "CRM / Prospecto", false)}
@@ -294,18 +294,6 @@ export function renderRolesCRM(state) {
           <input type="text" data-rol-idx="${i}" data-rol-prop="observaciones" value="${escapeAttr(r.observaciones || "")}" placeholder="Para quién es este rol / notas"></div>
       </div>`;
   }).join("");
-  const chipsSup = ROL_SUPERVISOR.permisos.map((p) => `<div class="canal-chip on">${p}</div>`).join("");
-  const supFijo = `
-    <div class="rep-card" style="border-left:3px solid #056AA1">
-      <div class="rep-head">
-        <i class="ti ti-shield-check" style="color:#056AA1;font-size:18px"></i>
-        <b style="flex:1">${ROL_SUPERVISOR.rol}</b>
-        <span style="font-size:11px;color:#8a8a8a"><i class="ti ti-lock"></i> fijo</span>
-      </div>
-      <div class="rep-field"><label>Permisos</label><div class="canal-grid">${chipsSup}</div></div>
-      <div class="rep-field"><label>Observaciones</label>
-        <p class="step-helper" style="margin:2px 0 0">${escapeHtml(ROL_SUPERVISOR.observaciones)}</p></div>
-    </div>`;
   return `
     <div class="field-block" style="border:1px solid #e6e6e6;border-radius:12px;padding:12px;margin-bottom:16px;background:#fafafa">
       <p class="field-label" style="font-size:15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer" data-rol-toggle>
@@ -313,9 +301,12 @@ export function renderRolesCRM(state) {
         <i class="ti ${rolesColapsado ? "ti-chevron-down" : "ti-chevron-up"}"></i>
       </p>
       ${rolesColapsado ? "" : `
-      ${supFijo}
       ${rows}
-      <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>`}
+      <button class="add-btn" data-rol-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar rol</button>
+      <div class="field-block pc-actividad" style="margin-top:12px;margin-bottom:0">
+        <label class="field-label"><i class="ti ti-clock-bolt" style="color:#056AA1"></i> Actividad - Crear los roles y permisos <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
+        <input type="text" data-roles-tiempo value="${escapeAttr(state.rolesTiempo || "")}" placeholder="Tiempo total (ej. 2 h)" style="max-width:200px">
+      </div>`}
     </div>`;
 }
 
@@ -382,6 +373,10 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   // Toggle minimizar Roles y permisos
   const rolToggle = container.querySelector("[data-rol-toggle]");
   if (rolToggle) rolToggle.addEventListener("click", () => { rolesColapsado = !rolesColapsado; onChange({ rerender: true }); });
+
+  // Tiempo de creación de todos los roles
+  const rolesT = container.querySelector("[data-roles-tiempo]");
+  if (rolesT) rolesT.addEventListener("input", (e) => { state.rolesTiempo = e.target.value; onChange({ rerender: false }); });
 
   // Toggle minimizar todo el proceso (form de la entidad)
   const formToggle = container.querySelector("[data-form-toggle]");

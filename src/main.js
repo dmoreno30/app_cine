@@ -69,6 +69,7 @@ function normalizar(s) {
       roles: Array.isArray((s.reporteria || {}).roles) ? s.reporteria.roles : base.reporteria.roles
     },
     roles: Array.isArray(s.roles) && s.roles.length ? s.roles : base.roles,
+    rolesTiempo: s.rolesTiempo != null ? s.rolesTiempo : base.rolesTiempo,
     consideraciones: { ...base.consideraciones, ...(s.consideraciones || {}) }
   };
   // Migración: borradores viejos donde "proceso" era el paquete completo.
