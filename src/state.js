@@ -42,7 +42,16 @@ const PRESETS_PIPELINE = {
     automatizaciones: [{ parametro: "Cambio a 'Venta ganada'", valor: "Crear tarea de facturación / post-venta y notificar al responsable.", etapa: "Venta ganada", tiempo: "" }]
   }
 };
-function defaultPipelineEntity(key) {
+// Nombre del pipeline por defecto por entidad.
+export const PIPELINE_NOMBRE_DEF = {
+  negociaciones: "Ventas generales",
+  prospectos: "Prospección general",
+  cotizaciones: "Cotizaciones general",
+  facturas: "Facturación general"
+};
+
+// Configuración de UN pipeline (campos editables + presets de la entidad).
+export function pipelineConfig(key) {
   const base = {
     flujo: "",
     etapasProgreso: [{ nombre: "", descripcion: "" }],
@@ -57,6 +66,14 @@ function defaultPipelineEntity(key) {
   };
   const preset = PRESETS_PIPELINE[key];
   return preset ? { ...base, ...JSON.parse(JSON.stringify(preset)) } : base;
+}
+
+// Entidad de tipo pipeline: ahora soporta VARIOS pipelines.
+function defaultPipelineEntity(key) {
+  return {
+    pipelines: [{ nombre: PIPELINE_NOMBRE_DEF[key] || "General", ...pipelineConfig(key) }],
+    pipelineActivo: 0
+  };
 }
 function toStage(x) {
   if (typeof x === "string") return { nombre: x, descripcion: "" };
@@ -268,6 +285,24 @@ function cleanFields(arr) {
     .filter((f) => (f.nombre || f.campo || "").trim())
     .map((f) => ({ nombre: (f.nombre || f.campo || "").trim(), tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio, valores: (f.valores || "").trim() }));
 }
+// Limpia la configuración de UN pipeline para el JSON canónico.
+function cleanPipeline(p) {
+  p = p || {};
+  return {
+    flujo: (p.flujo || "").trim(),
+    etapasProgreso: cleanStages(p.etapasProgreso),
+    exito: { titulo: ((p.exito && p.exito.titulo) || "").trim(), descripcion: ((p.exito && p.exito.descripcion) || "").trim() },
+    etapasFallo: cleanStages(p.etapasFallo),
+    actividadEtapas: cleanActividad(p.actividadEtapas),
+    flujoPasos: (p.flujoPasos || [])
+      .filter((x) => (x.accion || "").trim() || (x.responsable || "").trim())
+      .map((x) => ({ accion: (x.accion || "").trim(), responsable: (x.responsable || "").trim(), herramienta: (x.herramienta || "").trim(), condicion: (x.condicion || "").trim() })),
+    camposPersonalizados: cleanFields(p.camposPersonalizados),
+    actividadCampos: cleanActividad(p.actividadCampos),
+    automatizaciones: cleanAutos(p.automatizaciones),
+    autoTiempos: cleanAutoTiempos(p.autoTiempos)
+  };
+}
 function cleanAutoTiempos(arr) {
   return (arr || [])
     .filter((a) => (a.descripcion || "").trim() || (a.tiempo || "").trim())
@@ -475,19 +510,10 @@ export function buildCanonicalJSON(state) {
     const cfg = ENTIDADES[key];
     const data = state.entidades[key];
     if (cfg.type === "pipeline") {
+      // Soporta varios pipelines; retrocompatible con el formato antiguo (campos al nivel de la entidad).
+      const listaPipes = Array.isArray(data.pipelines) && data.pipelines.length ? data.pipelines : [data];
       const entry = {
-        flujo: (data.flujo || "").trim(),
-        etapasProgreso: cleanStages(data.etapasProgreso),
-        exito: { titulo: ((data.exito && data.exito.titulo) || "").trim(), descripcion: ((data.exito && data.exito.descripcion) || "").trim() },
-        etapasFallo: cleanStages(data.etapasFallo),
-        actividadEtapas: cleanActividad(data.actividadEtapas),
-        flujoPasos: (data.flujoPasos || [])
-          .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
-          .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), herramienta: (p.herramienta || "").trim(), condicion: (p.condicion || "").trim() })),
-        camposPersonalizados: cleanFields(data.camposPersonalizados),
-        actividadCampos: cleanActividad(data.actividadCampos),
-        automatizaciones: cleanAutos(data.automatizaciones),
-        autoTiempos: cleanAutoTiempos(data.autoTiempos)
+        pipelines: listaPipes.map((p, i) => ({ nombre: (p.nombre || "").trim() || `Pipeline ${i + 1}`, ...cleanPipeline(p) }))
       };
       if (key === "cotizaciones" && data.origenExterno) {
         entry.origenExterno = {

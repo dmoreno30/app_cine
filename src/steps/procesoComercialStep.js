@@ -1,9 +1,10 @@
 import { ENTIDADES, ORDEN_ENTIDADES, PERMISOS_CRM, ROL_SUPERVISOR } from "../data/config.js";
+import { pipelineConfig, PIPELINE_NOMBRE_DEF } from "../state.js";
 import { renderEntityMap, attachEntityMapListeners } from "../components/entityMap.js";
 import { renderStageList, attachStageListeners } from "../components/stageList.js";
 import { renderFieldList, attachFieldListeners } from "../components/fieldList.js";
 import { renderExampleStages } from "../components/ejemploEtapas.js";
-import { escapeHtml, escapeAttr } from "../utils.js";
+import { escapeHtml, escapeAttr, pipeActivo } from "../utils.js";
 
 // Sub-estado local a este paso: cuál entidad está expandida en el mapa
 // y cuál sub-tab está activa. Vive aquí (no en el estado persistido)
@@ -99,31 +100,57 @@ function renderEntityForm(state, key) {
   const tabsBar = secciones.map((s) => `
     <div class="sec-tab ${s.key === activeSection ? "active" : ""}" data-sec-tab="${s.key}"><i class="ti ${s.icon}"></i> ${s.label}</div>`).join("");
 
+  // Para entidades pipeline: trabajamos sobre el PIPELINE ACTIVO (puede haber varios).
+  const esPipeline = cfg.type === "pipeline";
+  const pipe = esPipeline ? pipeActivo(state, key) : data;
+
+  // Barra de selección de pipelines (solo pipeline)
+  let pipesBar = "";
+  if (esPipeline) {
+    const pipes = Array.isArray(data.pipelines) ? data.pipelines : [];
+    const pIdx = data.pipelineActivo || 0;
+    const chips = pipes.map((p, i) => `
+      <div class="pipe-tab ${i === pIdx ? "active" : ""}" data-pipe-tab="${i}"><i class="ti ti-git-branch"></i> ${escapeHtml(p.nombre || "Pipeline " + (i + 1))}</div>`).join("");
+    pipesBar = `
+      <div class="pipes-bar">
+        ${chips}
+        <button class="pipe-add" data-pipe-add><i class="ti ti-plus"></i> Nuevo pipeline</button>
+      </div>
+      <div class="field-block">
+        <label class="field-label">Nombre del pipeline</label>
+        <div class="row-flex">
+          <input type="text" data-pipe-nombre value="${escapeAttr(pipe.nombre || "")}" placeholder="Ej. Ventas generales">
+          ${pipes.length > 1 ? '<button class="icon-btn" data-pipe-remove title="Quitar este pipeline"><i class="ti ti-trash"></i></button>' : ""}
+        </div>
+      </div>`;
+  }
+
   let body = "";
   if (activeSection === "flujo") {
     body = `
       <div class="field-block">
         <label class="field-label pc-sec">Flujo del proceso de venta (${cfg.label.toLowerCase()}) <span style="color:#d00">*</span></label>
         <p class="step-helper">En tus palabras, cómo se mueve un registro desde que entra hasta que se cierra o se descarta.</p>
-        <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="5" placeholder="Describe el flujo comercial completo…">${escapeHtml(data.flujo)}</textarea>
+        <textarea data-entity-text="${key}" data-entity-prop="flujo" rows="5" placeholder="Describe el flujo comercial completo…">${escapeHtml(pipe.flujo || "")}</textarea>
       </div>
       ${key === "cotizaciones" ? renderOrigenExternoCotizaciones(data.origenExterno) : ""}`;
   } else if (activeSection === "etapas") {
     body = `
-      ${renderStageList(key, "etapasProgreso", "Etapas de progreso", data.etapasProgreso, "et-progreso")}
-      ${renderStageList(key, "etapasFallo", "Etapas de descarte", data.etapasFallo, "et-descarte")}
-      ${renderExitoStage(key, data.exito || { titulo: "", descripcion: "" })}
-      ${renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, data.actividadEtapas)}`;
+      ${renderStageList(key, "etapasProgreso", "Etapas de progreso", pipe.etapasProgreso, "et-progreso")}
+      ${renderStageList(key, "etapasFallo", "Etapas de descarte", pipe.etapasFallo, "et-descarte")}
+      ${renderExitoStage(key, pipe.exito || { titulo: "", descripcion: "" })}
+      ${renderActividad(key, "actividadEtapas", `Crear las etapas del proceso de ${cfg.label.toLowerCase()}`, pipe.actividadEtapas)}`;
   } else if (activeSection === "pasos") {
-    body = renderPasoAPaso(key, data.flujoPasos || [], cfg.label);
+    body = renderPasoAPaso(key, pipe.flujoPasos || [], cfg.label);
   } else if (activeSection === "campos") {
-    body = renderFieldList(key, data.camposPersonalizados)
-      + renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, data.actividadCampos);
+    body = renderFieldList(key, pipe.camposPersonalizados)
+      + renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, pipe.actividadCampos);
   } else if (activeSection === "autos") {
-    body = renderAutomatizaciones(key, data.automatizaciones || [], data.autoTiempos || [], cfg.type);
+    body = renderAutomatizaciones(key, pipe.automatizaciones || [], pipe.autoTiempos || [], cfg.type);
   }
 
   return `${cabecera}
+    ${pipesBar}
     <div class="sec-tabs">${tabsBar}</div>
     <div class="sec-body">${body}</div>`;
 }
@@ -337,6 +364,39 @@ export function attachProcesoComercialListeners(container, state, onChange) {
     el.addEventListener("click", () => { activeSection = el.getAttribute("data-sec-tab"); onChange({ rerender: true }); });
   });
 
+  // Selector de pipelines (varios pipelines por entidad)
+  container.querySelectorAll("[data-pipe-tab]").forEach((el) => el.addEventListener("click", () => {
+    state.entidades[activeEntityTab].pipelineActivo = parseInt(el.getAttribute("data-pipe-tab"), 10);
+    onChange({ rerender: true });
+  }));
+  const pipeAdd = container.querySelector("[data-pipe-add]");
+  if (pipeAdd) pipeAdd.addEventListener("click", () => {
+    const ent = state.entidades[activeEntityTab];
+    if (!Array.isArray(ent.pipelines)) return;
+    const copiar = window.confirm("¿Copiar la configuración del pipeline actual al nuevo?\n\nAceptar = copiar lo que ya tienes (flujo, etapas, paso a paso, campos y automatizaciones).\nCancelar = crear uno nuevo con los textos por defecto.");
+    let nuevo;
+    if (copiar) {
+      nuevo = JSON.parse(JSON.stringify(ent.pipelines[ent.pipelineActivo || 0]));
+      nuevo.nombre = ((nuevo.nombre || "Pipeline").trim()) + " (copia)";
+    } else {
+      nuevo = { nombre: "Nuevo pipeline", ...pipelineConfig(activeEntityTab) };
+    }
+    ent.pipelines.push(nuevo);
+    ent.pipelineActivo = ent.pipelines.length - 1;
+    onChange({ rerender: true });
+  });
+  const pipeNombre = container.querySelector("[data-pipe-nombre]");
+  if (pipeNombre) pipeNombre.addEventListener("input", (e) => { pipeActivo(state, activeEntityTab).nombre = e.target.value; onChange({ rerender: false }); });
+  const pipeRemove = container.querySelector("[data-pipe-remove]");
+  if (pipeRemove) pipeRemove.addEventListener("click", () => {
+    const ent = state.entidades[activeEntityTab];
+    if (!Array.isArray(ent.pipelines) || ent.pipelines.length <= 1) return;
+    if (!window.confirm("¿Quitar este pipeline? Se perderá su configuración.")) return;
+    ent.pipelines.splice(ent.pipelineActivo || 0, 1);
+    ent.pipelineActivo = 0;
+    onChange({ rerender: true });
+  });
+
   // Explicación global del proceso comercial
   const introEl = container.querySelector("[data-proceso-intro]");
   if (introEl) introEl.addEventListener("input", (e) => { state.procesoIntro = e.target.value; onChange({ rerender: false }); });
@@ -364,8 +424,9 @@ export function attachProcesoComercialListeners(container, state, onChange) {
       const key = el.getAttribute("data-act");
       const slot = el.getAttribute("data-act-slot");
       const prop = el.getAttribute("data-act-prop");
-      if (!state.entidades[key][slot] || typeof state.entidades[key][slot] !== "object") state.entidades[key][slot] = { descripcion: "", tiempo: "" };
-      state.entidades[key][slot][prop] = e.target.value;
+      const t = pipeActivo(state, key);
+      if (!t[slot] || typeof t[slot] !== "object") t[slot] = { descripcion: "", tiempo: "" };
+      t[slot][prop] = e.target.value;
       onChange({ rerender: false });
     });
   });
@@ -383,7 +444,7 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   if (formToggle) formToggle.addEventListener("click", () => { formColapsado = !formColapsado; onChange({ rerender: true }); });
 
   // Tiempos de automatizaciones (campo múltiple) — sobre la entidad activa
-  const autoT = () => { const e = state.entidades[activeEntityTab]; if (!Array.isArray(e.autoTiempos)) e.autoTiempos = []; return e.autoTiempos; };
+  const autoT = () => { const e = pipeActivo(state, activeEntityTab); if (!Array.isArray(e.autoTiempos)) e.autoTiempos = []; return e.autoTiempos; };
   container.querySelectorAll("[data-autot-prop]").forEach((el) => el.addEventListener("input", (e) => {
     const i = parseInt(el.getAttribute("data-autot-idx"), 10); const arr = autoT();
     if (!arr[i]) arr[i] = { descripcion: "", tiempo: "" };
@@ -398,8 +459,9 @@ export function attachProcesoComercialListeners(container, state, onChange) {
     el.addEventListener("input", (e) => {
       const key = el.getAttribute("data-exito");
       const prop = el.getAttribute("data-exito-prop");
-      if (!state.entidades[key].exito || typeof state.entidades[key].exito !== "object") state.entidades[key].exito = { titulo: "", descripcion: "" };
-      state.entidades[key].exito[prop] = e.target.value;
+      const t = pipeActivo(state, key);
+      if (!t.exito || typeof t.exito !== "object") t.exito = { titulo: "", descripcion: "" };
+      t.exito[prop] = e.target.value;
       onChange({ rerender: false });
     });
   });
@@ -408,7 +470,7 @@ export function attachProcesoComercialListeners(container, state, onChange) {
     el.addEventListener("input", (e) => {
       const entity = el.getAttribute("data-entity-text");
       const prop = el.getAttribute("data-entity-prop");
-      state.entidades[entity][prop] = e.target.value;
+      pipeActivo(state, entity)[prop] = e.target.value;
       onChange({ rerender: false });
     });
   });
@@ -445,31 +507,31 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   // Paso a paso
   container.querySelectorAll("[data-paso-prop]").forEach((el) => el.addEventListener("input", (e) => {
     const key = el.getAttribute("data-paso"); const i = parseInt(el.getAttribute("data-paso-idx"), 10);
-    state.entidades[key].flujoPasos[i][el.getAttribute("data-paso-prop")] = e.target.value; onChange({ rerender: false });
+    pipeActivo(state, key).flujoPasos[i][el.getAttribute("data-paso-prop")] = e.target.value; onChange({ rerender: false });
   }));
   container.querySelectorAll("[data-paso-add]").forEach((el) => el.addEventListener("click", () => {
     const key = el.getAttribute("data-paso-add");
-    (state.entidades[key].flujoPasos = state.entidades[key].flujoPasos || []).push({ accion: "", responsable: "", herramienta: "CRM / Prospecto", condicion: "" });
+    { const t = pipeActivo(state, key); (t.flujoPasos = t.flujoPasos || []).push({ accion: "", responsable: "", herramienta: "CRM / Prospecto", condicion: "" }); }
     onChange({ rerender: true });
   }));
   container.querySelectorAll("[data-paso-remove]").forEach((el) => el.addEventListener("click", () => {
     const [key, i] = el.getAttribute("data-paso-remove").split("|");
-    state.entidades[key].flujoPasos.splice(parseInt(i, 10), 1); onChange({ rerender: true });
+    pipeActivo(state, key).flujoPasos.splice(parseInt(i, 10), 1); onChange({ rerender: true });
   }));
 
   // Automatizaciones (tabla)
   container.querySelectorAll("[data-auto-prop]").forEach((el) => el.addEventListener("input", (e) => {
     const key = el.getAttribute("data-auto"); const i = parseInt(el.getAttribute("data-auto-idx"), 10);
-    state.entidades[key].automatizaciones[i][el.getAttribute("data-auto-prop")] = e.target.value; onChange({ rerender: false });
+    pipeActivo(state, key).automatizaciones[i][el.getAttribute("data-auto-prop")] = e.target.value; onChange({ rerender: false });
   }));
   container.querySelectorAll("[data-auto-add]").forEach((el) => el.addEventListener("click", () => {
     const key = el.getAttribute("data-auto-add");
-    (state.entidades[key].automatizaciones = state.entidades[key].automatizaciones || []).push({ parametro: "", valor: "", etapa: "", tiempo: "" });
+    { const t = pipeActivo(state, key); (t.automatizaciones = t.automatizaciones || []).push({ parametro: "", valor: "", etapa: "", tiempo: "" }); }
     onChange({ rerender: true });
   }));
   container.querySelectorAll("[data-auto-remove]").forEach((el) => el.addEventListener("click", () => {
     const [key, i] = el.getAttribute("data-auto-remove").split("|");
-    state.entidades[key].automatizaciones.splice(parseInt(i, 10), 1); onChange({ rerender: true });
+    pipeActivo(state, key).automatizaciones.splice(parseInt(i, 10), 1); onChange({ rerender: true });
   }));
 
   // Roles y permisos

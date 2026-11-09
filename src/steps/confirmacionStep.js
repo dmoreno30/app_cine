@@ -33,7 +33,10 @@ function validar(state) {
       if (!cfg || cfg.type !== "pipeline") return;
       if (!(state.entidadesHabilitadas && state.entidadesHabilitadas[key])) return;
       const ent = (state.entidades && state.entidades[key]) || {};
-      if (!(ent.flujo || "").trim()) faltan.push(`Flujo del proceso de venta en “${cfg.label}”`);
+      const pipes = Array.isArray(ent.pipelines) && ent.pipelines.length ? ent.pipelines : [ent];
+      pipes.forEach((p) => {
+        if (!(p.flujo || "").trim()) faltan.push(`Flujo del proceso de venta en “${cfg.label} — ${(p.nombre || "").trim() || cfg.label}”`);
+      });
     });
   }
 

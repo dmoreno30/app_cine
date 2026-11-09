@@ -1,5 +1,5 @@
 import { TIPOS_CAMPO } from "../data/config.js";
-import { escapeAttr } from "../utils.js";
+import { escapeAttr , pipeActivo } from "../utils.js";
 
 export function renderFieldList(entityKey, fields) {
   const rows = fields.map((f, i) => `
@@ -40,7 +40,7 @@ export function attachFieldListeners(container, state, onChange) {
       const prop = el.getAttribute("data-field-prop");
       const idx = parseInt(el.getAttribute("data-field-idx"), 10);
       const val = el.type === "checkbox" ? el.checked : e.target.value;
-      state.entidades[entity].camposPersonalizados[idx][prop] = val;
+      pipeActivo(state, entity).camposPersonalizados[idx][prop] = val;
       // Cambiar el tipo a "Lista" debe re-renderizar para mostrar el campo de valores.
       onChange({ rerender: prop === "tipo" });
     });
@@ -48,14 +48,14 @@ export function attachFieldListeners(container, state, onChange) {
   container.querySelectorAll("[data-add-field]").forEach((el) => {
     el.addEventListener("click", () => {
       const entity = el.getAttribute("data-add-field");
-      state.entidades[entity].camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false, valores: "" });
+      pipeActivo(state, entity).camposPersonalizados.push({ nombre: "", tipo: "Texto", personalizado: true, obligatorio: false, valores: "" });
       onChange({ rerender: true });
     });
   });
   container.querySelectorAll("[data-remove-field]").forEach((el) => {
     el.addEventListener("click", () => {
       const [entity, idx] = el.getAttribute("data-remove-field").split("|");
-      const arr = state.entidades[entity].camposPersonalizados;
+      const arr = pipeActivo(state, entity).camposPersonalizados;
       if (arr.length > 1) arr.splice(parseInt(idx, 10), 1);
       onChange({ rerender: true });
     });

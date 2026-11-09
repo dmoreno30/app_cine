@@ -1,4 +1,4 @@
-import { escapeAttr, escapeHtml } from "../utils.js";
+import { escapeAttr, escapeHtml, pipeActivo } from "../utils.js";
 
 function nombreDe(x) { return typeof x === "string" ? x : (x.nombre || ""); }
 function descDe(x) { return typeof x === "string" ? "" : (x.descripcion || ""); }
@@ -29,24 +29,25 @@ export function attachStageListeners(container, state, onChange) {
       const list = el.getAttribute("data-stage-list");
       const idx = parseInt(el.getAttribute("data-stage-idx"), 10);
       const prop = el.getAttribute("data-stage-prop");
-      let item = state.entidades[entity][list][idx];
+      const tgt = pipeActivo(state, entity);
+      let item = tgt[list][idx];
       if (typeof item === "string") item = { nombre: item, descripcion: "" };
       item[prop] = e.target.value;
-      state.entidades[entity][list][idx] = item;
+      tgt[list][idx] = item;
       onChange({ rerender: false });
     });
   });
   container.querySelectorAll("[data-add-stage]").forEach((el) => {
     el.addEventListener("click", () => {
       const [entity, list] = el.getAttribute("data-add-stage").split("|");
-      state.entidades[entity][list].push({ nombre: "", descripcion: "" });
+      pipeActivo(state, entity)[list].push({ nombre: "", descripcion: "" });
       onChange({ rerender: true });
     });
   });
   container.querySelectorAll("[data-remove-stage]").forEach((el) => {
     el.addEventListener("click", () => {
       const [entity, list, idx] = el.getAttribute("data-remove-stage").split("|");
-      const arr = state.entidades[entity][list];
+      const arr = pipeActivo(state, entity)[list];
       if (arr.length > 1) arr.splice(parseInt(idx, 10), 1);
       onChange({ rerender: true });
     });

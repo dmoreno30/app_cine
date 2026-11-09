@@ -351,3 +351,12 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .sec-tab.active{ background:#056AA1; color:#fff; box-shadow:0 2px 8px rgba(5,106,161,.25); }
 .sec-body{ animation:secfade .18s ease; }
 @keyframes secfade{ from{opacity:.5} to{opacity:1} }
+
+/* Selector de pipelines (varios pipelines por entidad) */
+.pipes-bar{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:6px 0 12px; }
+.pipe-tab{ display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; color:#5a6b74; background:#fff; border:1.5px solid #e0e7ec; cursor:pointer; }
+.pipe-tab i{ font-size:15px; }
+.pipe-tab:hover{ border-color:#2ABDEF; color:#1b2b33; }
+.pipe-tab.active{ background:#0f2b3a; border-color:#0f2b3a; color:#fff; }
+.pipe-add{ display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; color:#056AA1; background:#eaf4fb; border:1.5px dashed #9ed0ea; cursor:pointer; }
+.pipe-add:hover{ background:#dceefa; }

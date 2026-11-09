@@ -1,4 +1,5 @@
-import { defaultState, resetState } from "./state.js";
+import { defaultState, resetState, PIPELINE_NOMBRE_DEF } from "./state.js";
+import { ENTIDADES } from "./data/config.js";
 import { getPasos, renderStepper, attachStepperListeners } from "./components/stepper.js";
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
@@ -77,25 +78,45 @@ function normalizar(s) {
     out.desarrollos.captacion = true;
     out.desarrollos.reportes = true;
   }
-  // Migración de entidades pipeline (borradores viejos → estructura nueva)
+  // Migración de entidades pipeline (borradores viejos → estructura con varios pipelines)
   const toStage = (x) => (typeof x === "string" ? { nombre: x, descripcion: "" } : { nombre: (x && (x.nombre || x.etapa)) || "", descripcion: (x && (x.descripcion || x.desc)) || "" });
-  Object.values(out.entidades || {}).forEach((e) => {
+  const normCampos = (arr) => (arr || []).map((f) => ({ nombre: f.nombre || "", tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio, valores: f.valores || "" }));
+  const normAutos = (e) => {
+    if (!Array.isArray(e.automatizaciones)) return e.automatizacion ? [{ parametro: "", valor: e.automatizacion, etapa: "", tiempo: "" }] : [{ parametro: "", valor: "", etapa: "", tiempo: "" }];
+    return e.automatizaciones.map((a) => ({ parametro: a.parametro || "", valor: a.valor || "", etapa: a.etapa || "", tiempo: a.tiempo || "" }));
+  };
+  // Normaliza la configuración de UN pipeline.
+  const normPipe = (p) => {
+    if (Array.isArray(p.etapasProgreso)) p.etapasProgreso = p.etapasProgreso.map(toStage); else p.etapasProgreso = [{ nombre: "", descripcion: "" }];
+    if (Array.isArray(p.etapasFallo)) p.etapasFallo = p.etapasFallo.map(toStage); else p.etapasFallo = [{ nombre: "", descripcion: "" }];
+    if (!p.exito || typeof p.exito !== "object") p.exito = { titulo: "", descripcion: "" };
+    if (!p.actividadEtapas || typeof p.actividadEtapas !== "object") p.actividadEtapas = { descripcion: "", tiempo: "" };
+    if (!p.actividadCampos || typeof p.actividadCampos !== "object") p.actividadCampos = { descripcion: "", tiempo: "" };
+    if (!Array.isArray(p.flujoPasos)) p.flujoPasos = [{ accion: "", responsable: "", herramienta: "CRM / Prospecto", condicion: "" }];
+    p.automatizaciones = normAutos(p);
+    p.camposPersonalizados = normCampos(p.camposPersonalizados);
+    if (!Array.isArray(p.autoTiempos)) p.autoTiempos = [{ descripcion: "", tiempo: "" }];
+    if (typeof p.flujo !== "string") p.flujo = "";
+  };
+  Object.keys(out.entidades || {}).forEach((key) => {
+    const e = out.entidades[key];
     if (!e || typeof e !== "object") return;
-    if (Array.isArray(e.etapasProgreso)) e.etapasProgreso = e.etapasProgreso.map(toStage);
-    if (Array.isArray(e.etapasFallo)) e.etapasFallo = e.etapasFallo.map(toStage);
-    if (!e.exito || typeof e.exito !== "object") e.exito = { titulo: "", descripcion: "" };
-    if (!e.actividadEtapas || typeof e.actividadEtapas !== "object") e.actividadEtapas = { descripcion: "", tiempo: "" };
-    if (!e.actividadCampos || typeof e.actividadCampos !== "object") e.actividadCampos = { descripcion: "", tiempo: "" };
-    if (!Array.isArray(e.flujoPasos)) e.flujoPasos = [{ accion: "", responsable: "", herramienta: "", condicion: "" }];
-    if (!Array.isArray(e.automatizaciones)) {
-      e.automatizaciones = e.automatizacion ? [{ parametro: "", valor: e.automatizacion, etapa: "", tiempo: "" }] : [{ parametro: "", valor: "", etapa: "", tiempo: "" }];
-    } else {
-      e.automatizaciones = e.automatizaciones.map((a) => ({ parametro: a.parametro || "", valor: a.valor || "", etapa: a.etapa || "", tiempo: a.tiempo || "" }));
+    const cfg = ENTIDADES[key];
+    if (cfg && cfg.type === "pipeline") {
+      if (!Array.isArray(e.pipelines) || !e.pipelines.length) {
+        // Envolver config legacy (campos al nivel de la entidad) en pipelines[0]
+        const legacy = { ...e, nombre: PIPELINE_NOMBRE_DEF[key] || "General" };
+        delete legacy.pipelines; delete legacy.pipelineActivo; delete legacy.origenExterno;
+        e.pipelines = [legacy];
+      }
+      if (typeof e.pipelineActivo !== "number" || e.pipelineActivo < 0 || e.pipelineActivo >= e.pipelines.length) e.pipelineActivo = 0;
+      e.pipelines.forEach((p) => { if (!p.nombre) p.nombre = PIPELINE_NOMBRE_DEF[key] || "General"; normPipe(p); });
+    } else if (cfg && cfg.type === "simple") {
+      e.camposPersonalizados = normCampos(e.camposPersonalizados);
+      e.automatizaciones = normAutos(e);
+      if (!e.actividadCampos || typeof e.actividadCampos !== "object") e.actividadCampos = { descripcion: "", tiempo: "" };
+      if (!Array.isArray(e.autoTiempos)) e.autoTiempos = [{ descripcion: "", tiempo: "" }];
     }
-    if (Array.isArray(e.camposPersonalizados)) {
-      e.camposPersonalizados = e.camposPersonalizados.map((f) => ({ nombre: f.nombre || "", tipo: f.tipo || "Texto", personalizado: f.personalizado !== false, obligatorio: !!f.obligatorio, valores: f.valores || "" }));
-    }
-    if (!Array.isArray(e.autoTiempos)) e.autoTiempos = [{ descripcion: "", tiempo: "" }];
   });
   return out;
 }
