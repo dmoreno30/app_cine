@@ -47,7 +47,7 @@ function validar(state) {
       if (c.tipo === "widget") {
         if (!(c.url || "").trim()) faltan.push(`Página web del widget “${nom}”`);
       } else if (c.tipo === "tiktok" || c.tipo === "linkedin") {
-        if (!(c.conector || "").trim()) faltan.push(`Conector externo para “${nom}”`);
+        if (!(c.necesitaConector || "").trim()) faltan.push(`Indica si “${nom}” necesita conector externo`);
       }
       // FB/IG/Formularios (descripción) y demás canales no exigen pasos de flujo.
     });

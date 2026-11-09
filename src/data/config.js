@@ -170,3 +170,47 @@ export const PROCESO_CIP = [
   { titulo: "Capacitación en el uso del CRM comercial: pipelines, fichas, campos.", tiempo: "4 horas" },
   { titulo: "Capacitación nivel administrador del CRM (Permisos del CRM - ejecución de automatizaciones - gestión de información)", tiempo: "2 horas" }
 ];
+
+/* ============================================================================
+   Captación — por canal: títulos/descripciones por defecto y listas de opciones.
+   "XX" se reemplaza por el nombre del cliente (conCliente).
+   ============================================================================ */
+export const CAP_CANAL_DEFAULTS = {
+  facebook:  { titulo: "Facebook Messenger - Canal ventas", medio: "Facebook mediante Messenger" },
+  instagram: { titulo: "Instagram Direct - Canal ventas",   medio: "Instagram Direct" },
+  chatvivo:  { titulo: "Chat en vivo - Sitio web",           medio: "el chat en vivo del sitio web" },
+  telegram:  { titulo: "Telegram - Canal ventas",            medio: "Telegram" },
+  tiktok:    { titulo: "TikTok - Canal ventas",              medio: "TikTok" },
+  linkedin:  { titulo: "LinkedIn - Canal ventas",            medio: "LinkedIn" },
+  otros:     { titulo: "Otro canal",                         medio: "este canal" }
+};
+export const capDescripcion = (medio) =>
+  `Canal de comunicación que permitirá recibir en Bitrix24 los mensajes enviados por los visitantes a través de ${medio}. Las consultas podrán ser atendidas directamente por el equipo interno responsable, facilitando una comunicación inmediata y centralizada con los interesados.`;
+
+export const CAP_ACCION_MENSAJE = [
+  "Crear manualmente en la ventana del chat",
+  "Crear automáticamente un nuevo prospecto",
+  "Crear automáticamente una nueva negociación"
+];
+export const CAP_DISTRIBUCION = ["A todos", "Igualmente", "Exactamente como en la cola de espera"];
+export const CAP_SINO = ["Sí", "No"];
+
+// Formularios del CRM
+export const CAP_FORM_TITULO = "Formularios del CRM - Formulario de contacto";
+export const CAP_FORM_DESC =
+  "Formulario integrado en el sitio web de XX que permitirá recopilar información de los interesados en sus servicios. Los datos proporcionados serán registrados en el CRM para generar nuevos prospectos y facilitar su posterior seguimiento por parte del equipo comercial.";
+export const CAP_FORM_CREAR = ["Prospecto", "Contacto y Negociación", "Contacto", "SPA", "Factura", "Cotización", "Cliente"];
+export const CAP_FORM_CAMPOS = ["Nombre", "Apellido", "Teléfono", "Email", "Comentario"];
+
+// Widget
+export const CAP_WIDGET_TITULO = "Widget para sitio web - XX";
+
+// Actividades de creación y conexión (2 por defecto) y Capacitación (2 por defecto)
+export const CAP_ACTIVIDADES_DEF = [
+  { titulo: "Creación de canal abierto FB - Instagram + chat en vivo + Creación de Formulario del CRM - Widget del sitio web", tiempo: "2 horas" },
+  { titulo: "Vinculación de formulario del CRM + Widget del sitio web + Conexión de cuenta FB - Instagram a canales abiertos", tiempo: "2 horas" }
+];
+export const CAP_CIP_DEF = [
+  { titulo: "Gestión de Canales abiertos nivel usuario", tiempo: "1 hora" },
+  { titulo: "Gestión de Canales abiertos y formularios del CRM nivel administrador", tiempo: "2 horas" }
+];

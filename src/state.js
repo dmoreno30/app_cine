@@ -376,17 +376,34 @@ function buildChatbot(cb) {
 
 function buildCaptacion(cap) {
   cap = cap || {};
+  const s = (v) => (v == null ? "" : String(v)).trim();
   const instancias = (cap.canales || []).map((c) => ({
     tipo: c.tipo || "otros",
-    nombre: (c.nombre || "").trim(),
-    conector: (c.conector || "").trim(),
-    url: (c.url || "").trim(),
-    tiempo: (c.tiempo || "").trim(),
-    descripcion: (c.descripcion || "").trim(),
-    consideracion: (c.consideracion || "").trim(),
+    nombre: s(c.nombre),
+    descripcion: s(c.descripcion),
+    consideracion: s(c.consideracion),
+    // Mensajería directa
+    asignacion: s(c.asignacion),
+    accionMensaje: s(c.accionMensaje),
+    origen: s(c.origen),
+    transferenciaID: s(c.transferenciaID),
+    chatbot: s(c.chatbot),
+    chatbotNombre: s(c.chatbotNombre),
+    distribucion: s(c.distribucion),
+    // TikTok / LinkedIn — conector externo
+    necesitaConector: s(c.necesitaConector),
+    conector: s(c.conector),
+    conectorProceso: s(c.conectorProceso),
+    conectorProveedor: s(c.conectorProveedor),
+    conectorLicencia: s(c.conectorLicencia),
+    // Widget
+    url: s(c.url),
+    // Formularios del CRM
+    crearQue: Array.isArray(c.crearQue) ? c.crearQue.slice() : [],
+    camposForm: (c.camposForm || []).map((x) => s(x.nombre || x)).filter(Boolean),
     flujo: (c.flujo || [])
       .filter((p) => (p.accion || "").trim() || (p.responsable || "").trim())
-      .map((p) => ({ accion: (p.accion || "").trim(), responsable: (p.responsable || "").trim(), condicion: (p.condicion || "").trim(), tiempo: (p.tiempo || "").trim() }))
+      .map((p) => ({ accion: s(p.accion), responsable: s(p.responsable), condicion: s(p.condicion), tiempo: s(p.tiempo) }))
   }));
   const tiposUnicos = [...new Set(instancias.map((c) => c.tipo))];
   return {
