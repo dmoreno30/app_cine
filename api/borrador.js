@@ -21,6 +21,11 @@ const STATUS = { borrador: "3101", desarrollo: "3102" };
 const FORM = { pendiente: "3128", enviado: "3129" }; // estado del formulario (extranet)
 // Tolerante: Bitrix Listas puede devolver el CÓDIGO (3128/3129) o el TEXTO del valor
 // ("pendiente" / "enviado-bloqueado"), según el campo. Normalizamos ambos.
+function formKeyRobusto(raw) {
+  const k = formKey(raw);
+  if (k) return k;
+  return String(raw == null ? "" : raw).trim() ? "pendiente" : "";
+}
 function formKey(raw) {
   const s = String(raw == null ? "" : raw).trim().toLowerCase();
   if (!s) return "";
@@ -89,7 +94,7 @@ export default async function handler(req, res) {
         id: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]),
         tipo: val(el[PROP_TIPO]) === TIPO.t24 ? "t24" : "icine",
         status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador",
-        formStatus: formKey(val(el[PROP_FORM]))
+        formStatus: formKeyRobusto(val(el[PROP_FORM]))
       }));
       return res.json({ ok: true, items });
     }
@@ -141,7 +146,7 @@ export default async function handler(req, res) {
         proyectoId: val(el[PROP_PROYECTO]),
         tipo: val(el[PROP_TIPO]) === TIPO.t24 ? "t24" : "icine",
         status: val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador",
-        formStatus: formKey(val(el[PROP_FORM])), borrador: draft });
+        formStatus: formKeyRobusto(val(el[PROP_FORM])), borrador: draft });
     }
     return res.status(400).json({ ok: false, mensaje: "Acción no reconocida." });
   } catch (err) {

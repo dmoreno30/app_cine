@@ -8,12 +8,12 @@ const SUB_PROCESO = [
   { key: "reportes", icon: "ti-chart-bar", label: "Reportes", desc: "Tableros e indicadores de gestión" }
 ];
 const OTROS = [
-  { key: "chatbot", icon: "ti-message-chatbot", label: "Chatbot", desc: "Flujo del bot sobre plataforma vinculada a Bitrix24" }
+  { key: "chatbot", icon: "ti-message-chatbot", label: "Chatbot", desc: "Flujo del bot sobre plataforma vinculada a Bitrix24" },
+  { key: "api", icon: "ti-plug-connected", label: "Creación de API / Integración", desc: "Integración entre Bitrix24 y otro software" },
+  { key: "app", icon: "ti-app-window", label: "Creación de aplicación", desc: "Aplicación a medida" }
 ];
 const PROXIMAMENTE = [
-  { key: "rrhh", icon: "ti-users-group", label: "Procesos de gestión de RRHH" },
-  { key: "api", icon: "ti-plug-connected", label: "Creación de API / Integración" },
-  { key: "app", icon: "ti-app-window", label: "Creación de aplicación" }
+  { key: "rrhh", icon: "ti-users-group", label: "Procesos de gestión de RRHH" }
 ];
 
 function ensureDesarrollos(state) {

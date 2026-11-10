@@ -354,10 +354,14 @@ function render() {
     }
   }
 
+  // En modo desarrollador, si el registro tiene formulario, ofrecemos abrirlo directo.
+  const tieneForm = !!(sesion.conFormulario || sesion.formStatus);
+  const verFormBtn = (!modoCliente && tieneForm)
+    ? `<button class="sb-btn" data-ver-form><i class="ti ti-forms"></i> Formulario</button>` : "";
   const accionesBar = modoCliente
     ? `<button class="sb-btn" data-cli-borrador ${bloqueado ? "disabled" : ""}><i class="ti ti-device-floppy"></i> Guardar borrador</button>
        <button class="sb-btn primary" data-cli-enviar ${bloqueado ? "disabled" : ""}><i class="ti ti-send"></i> Enviar</button>`
-    : `<button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
+    : `${verFormBtn}<button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
   const barra = `<div class="sesion-bar">
     <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> ${ctx.esExtranet ? "Mis formularios" : "Inicio"}</button>
     <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>
@@ -379,6 +383,7 @@ function render() {
 
   app.querySelector("[data-volver]").addEventListener("click", volverInicio);
   const gBtn = app.querySelector("[data-guardar]"); if (gBtn) gBtn.addEventListener("click", guardar);
+  const vfBtn = app.querySelector("[data-ver-form]"); if (vfBtn) vfBtn.addEventListener("click", () => { if (sesion.elementId) abrirFormulario(sesion.elementId); });
   const cbBtn = app.querySelector("[data-cli-borrador]"); if (cbBtn) cbBtn.addEventListener("click", guardarBorradorCliente);
   const ceBtn = app.querySelector("[data-cli-enviar]"); if (ceBtn) ceBtn.addEventListener("click", enviarCliente);
   attachStepperListeners(app, (i) => { currentStep = i; render(); });
