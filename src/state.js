@@ -1,4 +1,4 @@
-import { CANALES, ENTIDADES, MONEDAS, CAPTACION_TEXTOS, CAPTACION_CIP, conCliente, ROL_SUPERVISOR, PROCESO_CIP } from "./data/config.js";
+import { CANALES, ENTIDADES, MONEDAS, CAPTACION_TEXTOS, CAPTACION_CIP, conCliente, ROL_SUPERVISOR, PROCESO_CIP, APP_ENDPOINTS_DEF, APP_ACTIVIDADES_DEF } from "./data/config.js";
 import { CATALOGO_RRHH, CAMPOS_RRHH } from "./data/rrhh.js";
 
 const STORAGE_KEY = "icine_captura_draft_v2";
@@ -142,8 +142,22 @@ export function defaultState() {
     cip: { captacion: [], proceso: PROCESO_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo })), reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
     // Pruebas (solo tiempos) para la tabla del punto 5
     pruebas: { qa: "", alpha: "" },
-    // Datos libres de los módulos nuevos (API y Aplicación, por ahora).
+    // Datos libres de los módulos nuevos (API; app ahora tiene su propio objeto).
     modulos: { api: "", app: "" },
+    // Aplicación a medida (NE "app"): tipo, dónde se incrusta, permisos, endpoints y actividades.
+    app: {
+      descripcion: "",
+      tipo: "widget",              // "general" | "widget"
+      widgetZona: "crm",           // si widget: "crm" | "tareas" | "proyectos"
+      crmEntidad: "negociacion",   // si zona crm: entidad de la ficha
+      crmUbicacion: "pestana",     // si zona crm: "pestana" | "toolbar" | "lateral"
+      mockupUrl: "",               // enlace a mockup / diseño (Figma, imagen, etc.)
+      restringeUsuarios: false,    // ¿tiene restricción de acceso por usuario?
+      usuariosPermitidos: "",      // a quiénes (si restringe)
+      permisos: { crm: true, tareas: false, usuarios: false, telefonia: false, disco: false, chat: false, calendario: false },
+      endpoints: APP_ENDPOINTS_DEF.map((e) => ({ ...e })),
+      actividades: APP_ACTIVIDADES_DEF.map((a) => ({ ...a }))
+    },
     // Módulo Chatbot (detallado): flujo del bot sobre plataforma vinculada a Bitrix24.
     chatbot: {
       tipoBot: "",              // "menus" | "conversacional"
@@ -243,6 +257,13 @@ export function loadState() {
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
       api: { ...base.api, ...(parsed.api || {}), flujos: Array.isArray((parsed.api || {}).flujos) ? parsed.api.flujos : base.api.flujos },
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
+      app: {
+        ...base.app,
+        ...(parsed.app || {}),
+        permisos: { ...base.app.permisos, ...((parsed.app || {}).permisos || {}) },
+        endpoints: Array.isArray((parsed.app || {}).endpoints) ? parsed.app.endpoints : base.app.endpoints,
+        actividades: Array.isArray((parsed.app || {}).actividades) ? parsed.app.actividades : base.app.actividades
+      },
       chatbot: {
         ...base.chatbot,
         ...(parsed.chatbot || {}),
@@ -371,6 +392,30 @@ function buildRRHH(rr) {
   return { procesos };
 }
 
+function buildApp(ap) {
+  ap = ap || {};
+  const s = (v) => (v == null ? "" : String(v)).trim();
+  const tipo = ap.tipo === "general" ? "general" : "widget";
+  const esCRM = tipo === "widget" && ap.widgetZona === "crm";
+  return {
+    descripcion: s(ap.descripcion),
+    tipo,
+    widgetZona: tipo === "widget" ? (ap.widgetZona || "crm") : "",
+    crmEntidad: esCRM ? (ap.crmEntidad || "") : "",
+    crmUbicacion: esCRM ? (ap.crmUbicacion || "") : "",
+    mockupUrl: s(ap.mockupUrl),
+    restringeUsuarios: !!ap.restringeUsuarios,
+    usuariosPermitidos: ap.restringeUsuarios ? s(ap.usuariosPermitidos) : "",
+    permisos: Object.keys(ap.permisos || {}).filter((k) => ap.permisos[k]),
+    endpoints: (ap.endpoints || [])
+      .filter((e) => s(e.ruta) || s(e.descripcion))
+      .map((e) => ({ ruta: s(e.ruta), metodo: s(e.metodo), descripcion: s(e.descripcion) })),
+    actividades: (ap.actividades || [])
+      .filter((a) => s(a.titulo) || s(a.tiempo))
+      .map((a) => ({ titulo: s(a.titulo), tiempo: s(a.tiempo) }))
+  };
+}
+
 function buildChatbot(cb) {
   const plataformas = Object.keys(cb.plataformas || {}).filter((k) => cb.plataformas[k]);
   if ((cb.plataformaOtro || "").trim()) plataformas.push(cb.plataformaOtro.trim());
@@ -494,6 +539,7 @@ export function buildCanonicalJSON(state) {
       api: (state.modulos.api || "").trim(),
       app: (state.modulos.app || "").trim()
     },
+    app: buildApp(state.app),
     chatbot: buildChatbot(state.chatbot),
     rrhh: buildRRHH(state.rrhh),
     api: buildAPI(state.api),

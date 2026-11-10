@@ -214,3 +214,59 @@ export const CAP_CIP_DEF = [
   { titulo: "Gestión de Canales abiertos nivel usuario", tiempo: "1 hora" },
   { titulo: "Gestión de Canales abiertos y formularios del CRM nivel administrador", tiempo: "2 horas" }
 ];
+
+/* ============================================================================
+   APLICACIÓN A MEDIDA (NE "app")
+   Una aplicación local de Bitrix24: de ámbito general o incrustada (widget).
+   ============================================================================ */
+export const APP_TIPOS = [
+  { key: "general", label: "Ámbito general", desc: "Abre en su propio espacio (menú / sección propia)." },
+  { key: "widget",  label: "Widget (incrustado)", desc: "Se incrusta dentro de una pantalla de Bitrix24." }
+];
+// Si es widget, ¿en qué zona de Bitrix24 se incrusta?
+export const APP_WIDGET_ZONAS = [
+  { key: "crm",       label: "CRM" },
+  { key: "tareas",    label: "Tareas" },
+  { key: "proyectos", label: "Proyectos" }
+];
+// Si el widget es de CRM, ¿en qué entidad (ficha)?
+export const APP_CRM_ENTIDADES = [
+  { key: "prospecto",   label: "Prospecto" },
+  { key: "contacto",    label: "Contacto" },
+  { key: "compania",    label: "Compañía" },
+  { key: "negociacion", label: "Negociación" },
+  { key: "cotizacion",  label: "Cotización" },
+  { key: "factura",     label: "Factura" }
+];
+// Y, dentro de la ficha, ¿en qué lugar?
+export const APP_CRM_UBICACION = [
+  { key: "pestana", label: "Pestaña en la ficha" },
+  { key: "toolbar", label: "Barra de herramientas" },
+  { key: "lateral", label: "Panel lateral / actividad" }
+];
+// Permisos / alcances que la app necesita en Bitrix24.
+export const APP_PERMISOS = [
+  { key: "crm",        label: "CRM" },
+  { key: "tareas",     label: "Tareas y proyectos" },
+  { key: "usuarios",   label: "Usuarios" },
+  { key: "telefonia",  label: "Telefonía" },
+  { key: "disco",      label: "Disco / archivos" },
+  { key: "chat",       label: "Chat y notificaciones" },
+  { key: "calendario", label: "Calendario" }
+];
+export const APP_METODOS = ["GET", "POST", "PUT", "DELETE", "Otro"];
+// Valores por defecto (editables).
+export const APP_ENDPOINTS_DEF = [
+  { ruta: "/instalar", metodo: "POST", descripcion: "Registra la aplicación en Bitrix24 y guarda los accesos (tokens) para operar." }
+];
+export const APP_ACTIVIDADES_DEF = [
+  { titulo: "Análisis funcional y diseño de la aplicación", tiempo: "" },
+  { titulo: "Desarrollo de la aplicación", tiempo: "" },
+  { titulo: "Instalación y pruebas en Bitrix24", tiempo: "" }
+];
+// Beneficios por defecto para la vista de cliente del iCINE.
+export const APP_BENEFICIOS_DEF = [
+  ["✓", "A la medida", "Resuelve una necesidad puntual que las funciones estándar no cubren."],
+  ["✓", "Integrada a Bitrix24", "Funciona dentro de la plataforma, sin saltar a otra herramienta."],
+  ["✓", "Centraliza la información", "Los datos quedan en Bitrix24, junto al resto del trabajo."]
+];

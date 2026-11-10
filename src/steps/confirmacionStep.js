@@ -57,6 +57,15 @@ function validar(state) {
     const conx = (cap.conexiones || []).filter((x) => (x.titulo || "").trim());
     if (!conx.length) faltan.push("Al menos una actividad de creación y conexión de canales");
   }
+  // Aplicación: requisitos específicos
+  if (d.app) {
+    const ap = state.app || {};
+    if (!(ap.descripcion || "").trim()) faltan.push("Descripción de la aplicación");
+    const actApp = (ap.actividades || []).some((a) => (a.titulo || "").trim() && (a.tiempo || "").trim());
+    if (!actApp) faltan.push("Al menos una actividad con tiempo en “Aplicación”");
+    if (ap.restringeUsuarios && !(ap.usuariosPermitidos || "").trim()) faltan.push("Indicá a qué usuarios se restringe la aplicación");
+  }
+
   if (!(state.pruebas && (state.pruebas.qa || "").trim())) faltan.push("Tiempo de Pruebas internas QA");
   if (!(state.pruebas && (state.pruebas.alpha || "").trim())) faltan.push("Tiempo de Pruebas Alpha con el cliente");
   return faltan;

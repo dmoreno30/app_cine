@@ -10,10 +10,10 @@ import { renderSeleccionStep, attachSeleccionListeners } from "./steps/seleccion
 import { renderCaptacionStep, attachCaptacionListeners } from "./steps/captacionStep.js";
 import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./steps/procesoComercialStep.js";
 import { renderReporteriaStep, attachReporteriaListeners } from "./steps/reporteriaStep.js";
-import { renderModuloStep, attachModuloListeners } from "./steps/moduloStep.js";
 import { renderChatbotStep, attachChatbotListeners } from "./steps/chatbotStep.js";
 import { renderRRHHStep, attachRRHHListeners } from "./steps/rrhhStep.js";
 import { renderAPIStep, attachAPIListeners } from "./steps/apiStep.js";
+import { renderAppStep, attachAppListeners } from "./steps/appStep.js";
 import { renderConfirmacionStep, attachConfirmacionListeners } from "./steps/confirmacionStep.js";
 import { initBitrix, obtenerContextoBX, enBitrix } from "./bitrix.js";
 import { listarDesarrollos, crearDesarrollo, cargarDesarrollo, guardarDesarrollo, listarFormularios, guardarFormularioBorrador, enviarFormulario } from "./apiCliente.js";
@@ -315,7 +315,7 @@ function render() {
   else if (stepKey === "chatbot") bodyHtml = renderChatbotStep(state);
   else if (stepKey === "rrhh") bodyHtml = renderRRHHStep(state);
   else if (stepKey === "api") bodyHtml = renderAPIStep(state);
-  else if (stepKey === "app") bodyHtml = renderModuloStep(state, stepKey);
+  else if (stepKey === "app") bodyHtml = renderAppStep(state);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, false);
 
   // Campo "Consideraciones" + Capacitación: solo para el desarrollador, no en modo cliente.
@@ -427,7 +427,7 @@ function render() {
   else if (stepKey === "chatbot") attachChatbotListeners(card, state, onChange);
   else if (stepKey === "rrhh") attachRRHHListeners(card, state, onChange);
   else if (stepKey === "api") attachAPIListeners(card, state, onChange);
-  else if (stepKey === "app") attachModuloListeners(card, state, onChange, stepKey);
+  else if (stepKey === "app") attachAppListeners(card, state, onChange);
   else if (stepKey === "confirmacion") attachConfirmacionListeners(card, state, onChange, null);
 }
 
