@@ -109,10 +109,27 @@ export const ENTIDADES_REPORTE = ["Prospectos", "Negociaciones", "Contactos", "C
 
 // API / Integración
 export const OBJETOS_API = ["Contactos", "Compañías", "Prospectos", "Negociaciones", "Cotizaciones", "Facturas", "Productos", "Tareas", "Otro"];
+// Sentido de cada paso de sincronización. "en_bitrix" = la acción ocurre dentro
+// de la propia instancia de Bitrix24 (antes de salir hacia el software externo).
 export const DIRECCIONES_API = [
+  { key: "en_bitrix",    label: "En la propia instancia de Bitrix24" },
   { key: "desde_bitrix", label: "Bitrix24 → software externo" },
   { key: "hacia_bitrix", label: "Software externo → Bitrix24" },
-  { key: "ambos", label: "En ambos sentidos" }
+  { key: "ambos",        label: "En ambos sentidos" }
+];
+// Cada paso crea o actualiza un registro.
+export const API_ACCIONES = [
+  { key: "crear",      label: "Crear" },
+  { key: "actualizar", label: "Actualizar" }
+];
+export const API_METODOS = ["GET", "POST", "PUT", "DELETE"];
+// Cómo se autentica contra el software externo.
+export const API_AUTENTICACION = ["API Key", "OAuth 2.0", "Token (Bearer)", "Usuario y contraseña (Basic)", "Webhook con token", "Otro / a definir"];
+// Cuándo se dispara la sincronización.
+export const API_SINCRONIZACION = [
+  { key: "tiempo_real", label: "En tiempo real (al ocurrir el evento)" },
+  { key: "programada",  label: "Programada (cada cierto tiempo)" },
+  { key: "manual",      label: "Manual / bajo demanda" }
 ];
 
 // Roles y permisos del CRM (multi-selección por rol)

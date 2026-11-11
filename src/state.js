@@ -149,7 +149,7 @@ export function defaultState() {
       descripcion: "",
       tipo: "widget",              // "general" | "widget"
       widgetZona: "crm",           // si widget: "crm" | "tareas" | "proyectos"
-      crmEntidad: "negociacion",   // si zona crm: entidad de la ficha
+      crmEntidades: ["negociacion"], // si zona crm: entidades de la ficha (múltiple)
       crmUbicacion: "pestana",     // si zona crm: "pestana" | "toolbar" | "lateral"
       mockupUrl: "",               // enlace a mockup / diseño (Figma, imagen, etc.)
       restringeUsuarios: false,    // ¿tiene restricción de acceso por usuario?
@@ -179,12 +179,20 @@ export function defaultState() {
     rrhh: { procesos: [] },
     // API / Integración con software externo
     api: {
+      descripcion: "",             // cuadro grande: qué resuelve la integración
       otroSoftware: "",
+      urlBase: "",                 // URL base del servicio externo (opcional)
+      autenticacion: "",           // cómo se autentica (API_AUTENTICACION)
+      autenticacionNota: "",
       dirBitrixHaciaOtro: false,   // Bitrix24 → externo
       dirOtroHaciaBitrix: false,   // externo → Bitrix24
+      sincronizacion: "tiempo_real", // cuándo se dispara (API_SINCRONIZACION)
+      sincronizacionNota: "",
       webService: false,           // ¿se construye un web service / API propia?
       webServiceNota: "",
-      flujos: [],                  // [{ objeto, direccion, descripcion, mapeaId, consideraciones }]
+      // Pasos numerados de la sincronización.
+      // [{ objeto, accion, direccion, descripcion, endpoint, metodo, tiempo, mapeaId, consideraciones }]
+      pasos: [],
       sincronizaProductos: false,
       codigoProductos: ""
     },
@@ -255,12 +263,20 @@ export function loadState() {
       cip: { ...base.cip, ...(parsed.cip || {}) },
       pruebas: { ...base.pruebas, ...(parsed.pruebas || {}) },
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
-      api: { ...base.api, ...(parsed.api || {}), flujos: Array.isArray((parsed.api || {}).flujos) ? parsed.api.flujos : base.api.flujos },
+      api: (() => {
+        const pa = parsed.api || {};
+        // Compat: borradores viejos usaban "flujos"; ahora son "pasos".
+        const pasos = Array.isArray(pa.pasos) ? pa.pasos : (Array.isArray(pa.flujos) ? pa.flujos : base.api.pasos);
+        return { ...base.api, ...pa, pasos };
+      })(),
       modulos: { ...base.modulos, ...(parsed.modulos || {}) },
       app: {
         ...base.app,
         ...(parsed.app || {}),
         permisos: { ...base.app.permisos, ...((parsed.app || {}).permisos || {}) },
+        crmEntidades: Array.isArray((parsed.app || {}).crmEntidades)
+          ? parsed.app.crmEntidades
+          : ((parsed.app || {}).crmEntidad ? [(parsed.app).crmEntidad] : base.app.crmEntidades),
         endpoints: Array.isArray((parsed.app || {}).endpoints) ? parsed.app.endpoints : base.app.endpoints,
         actividades: Array.isArray((parsed.app || {}).actividades) ? parsed.app.actividades : base.app.actividades
       },
@@ -347,23 +363,34 @@ function cleanStages(arr) {
 
 function buildAPI(a) {
   a = a || {};
+  const s = (v) => (v == null ? "" : String(v)).trim();
   return {
-    otroSoftware: (a.otroSoftware || "").trim(),
+    descripcion: s(a.descripcion),
+    otroSoftware: s(a.otroSoftware),
+    urlBase: s(a.urlBase),
+    autenticacion: s(a.autenticacion),
+    autenticacionNota: s(a.autenticacionNota),
     dirBitrixHaciaOtro: !!a.dirBitrixHaciaOtro,
     dirOtroHaciaBitrix: !!a.dirOtroHaciaBitrix,
+    sincronizacion: a.sincronizacion || "",
+    sincronizacionNota: s(a.sincronizacionNota),
     webService: !!a.webService,
-    webServiceNota: (a.webServiceNota || "").trim(),
-    flujos: (a.flujos || [])
-      .filter((f) => (f.objeto || "").trim() || (f.descripcion || "").trim())
-      .map((f) => ({
-        objeto: (f.objeto || "").trim(),
-        direccion: f.direccion || "",
-        descripcion: (f.descripcion || "").trim(),
-        mapeaId: !!f.mapeaId,
-        consideraciones: (f.consideraciones || "").trim()
+    webServiceNota: s(a.webServiceNota),
+    pasos: (a.pasos || [])
+      .filter((p) => s(p.objeto) || s(p.descripcion))
+      .map((p) => ({
+        objeto: s(p.objeto),
+        accion: p.accion || "",
+        direccion: p.direccion || "",
+        descripcion: s(p.descripcion),
+        endpoint: s(p.endpoint),
+        metodo: s(p.metodo),
+        tiempo: s(p.tiempo),
+        mapeaId: !!p.mapeaId,
+        consideraciones: s(p.consideraciones)
       })),
     sincronizaProductos: !!a.sincronizaProductos,
-    codigoProductos: (a.codigoProductos || "").trim()
+    codigoProductos: s(a.codigoProductos)
   };
 }
 
@@ -401,7 +428,7 @@ function buildApp(ap) {
     descripcion: s(ap.descripcion),
     tipo,
     widgetZona: tipo === "widget" ? (ap.widgetZona || "crm") : "",
-    crmEntidad: esCRM ? (ap.crmEntidad || "") : "",
+    crmEntidades: esCRM ? (Array.isArray(ap.crmEntidades) ? ap.crmEntidades.filter(Boolean) : []) : [],
     crmUbicacion: esCRM ? (ap.crmUbicacion || "") : "",
     mockupUrl: s(ap.mockupUrl),
     restringeUsuarios: !!ap.restringeUsuarios,

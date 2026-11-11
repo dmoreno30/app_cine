@@ -69,15 +69,13 @@ export function renderAppStep(state) {
     </div>` : ""}
 
     ${esCRM ? `
-    <div class="field-block" style="display:flex;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <label class="field-label">¿En qué entidad del CRM?</label>
-        <select data-app-field="crmEntidad">${opciones(APP_CRM_ENTIDADES, a.crmEntidad)}</select>
-      </div>
-      <div style="flex:1;min-width:200px">
-        <label class="field-label">¿En qué lugar de la ficha?</label>
-        <select data-app-field="crmUbicacion">${opciones(APP_CRM_UBICACION, a.crmUbicacion)}</select>
-      </div>
+    <div class="field-block">
+      <label class="field-label">¿En qué entidades del CRM? <span style="font-weight:400;color:var(--text-secondary)">— podés marcar varias</span></label>
+      ${APP_CRM_ENTIDADES.map((e) => `<label class="chk-line"><input type="checkbox" data-app-ent="${e.key}" ${(a.crmEntidades || []).includes(e.key) ? "checked" : ""}> ${escapeHtml(e.label)}</label>`).join("")}
+    </div>
+    <div class="field-block">
+      <label class="field-label">¿En qué lugar de la ficha?</label>
+      <select data-app-field="crmUbicacion">${opciones(APP_CRM_UBICACION, a.crmUbicacion)}</select>
     </div>` : ""}
 
     <div class="field-block">
@@ -129,6 +127,17 @@ export function attachAppListeners(container, state, onChange) {
   // Restricción de usuarios (muestra/oculta el campo "¿quiénes?").
   const restr = container.querySelector("[data-app-restr]");
   if (restr) restr.addEventListener("change", (e) => { a.restringeUsuarios = e.target.checked; onChange({ rerender: true }); });
+
+  // Entidades del CRM (selección múltiple).
+  if (!Array.isArray(a.crmEntidades)) a.crmEntidades = [];
+  container.querySelectorAll("[data-app-ent]").forEach((el) => {
+    el.addEventListener("change", (e) => {
+      const key = el.getAttribute("data-app-ent");
+      if (e.target.checked) { if (!a.crmEntidades.includes(key)) a.crmEntidades.push(key); }
+      else { a.crmEntidades = a.crmEntidades.filter((k) => k !== key); }
+      onChange({ rerender: false });
+    });
+  });
 
   // Permisos (checklist).
   container.querySelectorAll("[data-app-perm]").forEach((el) => {
