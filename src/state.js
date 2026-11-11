@@ -141,7 +141,10 @@ export function defaultState() {
     // Capacitación (CIP) por NE: [{ titulo, tiempo }]
     cip: { captacion: [], proceso: PROCESO_CIP.map((c) => ({ titulo: c.titulo, tiempo: c.tiempo })), reporteria: [], chatbot: [], api: [], app: [], rrhh: [] },
     // Pruebas (solo tiempos) para la tabla del punto 5
-    pruebas: { qa: "", alpha: "" },
+    pruebas: {
+      qa: [{ titulo: "Pruebas internas QA", tiempo: "" }],
+      alpha: [{ titulo: "Pruebas Alpha con el cliente", tiempo: "" }]
+    },
     // Datos libres de los módulos nuevos (API; app ahora tiene su propio objeto).
     modulos: { api: "", app: "" },
     // Aplicación a medida (NE "app"): tipo, dónde se incrusta, permisos, endpoints y actividades.
@@ -261,7 +264,17 @@ export function loadState() {
       desarrollos: { ...base.desarrollos, ...(parsed.desarrollos || {}) },
       consideraciones: { ...base.consideraciones, ...(parsed.consideraciones || {}) },
       cip: { ...base.cip, ...(parsed.cip || {}) },
-      pruebas: { ...base.pruebas, ...(parsed.pruebas || {}) },
+      pruebas: (() => {
+        const pp = parsed.pruebas || {};
+        // Compat: antes qa/alpha eran un texto; ahora son listas de { titulo, tiempo }.
+        const aLista = (v, tituloDef) => Array.isArray(v)
+          ? v
+          : ((v || "").trim() ? [{ titulo: tituloDef, tiempo: (v || "").trim() }] : [{ titulo: tituloDef, tiempo: "" }]);
+        return {
+          qa: aLista(pp.qa, "Pruebas internas QA"),
+          alpha: aLista(pp.alpha, "Pruebas Alpha con el cliente")
+        };
+      })(),
       rrhh: { procesos: Array.isArray((parsed.rrhh || {}).procesos) ? parsed.rrhh.procesos : base.rrhh.procesos },
       api: (() => {
         const pa = parsed.api || {};
@@ -552,7 +565,13 @@ export function buildCanonicalJSON(state) {
     // Desarrollos seleccionados (paquete proceso + módulos sueltos).
     desarrollos: Object.keys(state.desarrollos).filter((k) => state.desarrollos[k]),
     cip: Object.fromEntries(Object.entries(state.cip || {}).map(([k, arr]) => [k, (arr || []).filter((c) => (c.titulo || "").trim() || (c.tiempo || "").trim()).map((c) => ({ titulo: (c.titulo || "").trim(), tiempo: (c.tiempo || "").trim() }))])),
-    pruebas: { qa: (state.pruebas && state.pruebas.qa || "").trim(), alpha: (state.pruebas && state.pruebas.alpha || "").trim() },
+    pruebas: (() => {
+      const p = state.pruebas || {};
+      const limpia = (arr) => (Array.isArray(arr) ? arr : [])
+        .filter((x) => (x.titulo || "").trim() || (x.tiempo || "").trim())
+        .map((x) => ({ titulo: (x.titulo || "").trim(), tiempo: (x.tiempo || "").trim() }));
+      return { qa: limpia(p.qa), alpha: limpia(p.alpha) };
+    })(),
     consideraciones: {
       captacion: (state.consideraciones && state.consideraciones.captacion || "").trim(),
       proceso: (state.consideraciones && state.consideraciones.proceso || "").trim(),

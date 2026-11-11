@@ -9,6 +9,17 @@ let lastDocxUrl = null;
 
 const ESTADOS = ["EN CREACIÓN", "POR PRESENTAR", "FINALIZADO"];
 
+// Normaliza state.pruebas a listas { titulo, tiempo } (compat con el formato viejo de texto).
+function ensurePruebas(state) {
+  if (!state.pruebas) state.pruebas = {};
+  const p = state.pruebas;
+  const aLista = (v, def) => Array.isArray(v) ? v : ((v || "").trim() ? [{ titulo: def, tiempo: (v || "").trim() }] : [{ titulo: def, tiempo: "" }]);
+  p.qa = aLista(p.qa, "Pruebas internas QA");
+  p.alpha = aLista(p.alpha, "Pruebas Alpha con el cliente");
+  return p;
+}
+function tienePrueba(arr) { return (arr || []).some((x) => (x.titulo || "").trim() && (x.tiempo || "").trim()); }
+
 function neSeleccionadas(state) {
   const d = state.desarrollos || {};
   const map = { captacion: "Captación", proceso: "Proceso Comercial", reportes: "Reportería", chatbot: "Chatbot", api: "API / Integración", app: "Aplicación", rrhh: "RRHH" };
@@ -66,14 +77,24 @@ function validar(state) {
     if (ap.restringeUsuarios && !(ap.usuariosPermitidos || "").trim()) faltan.push("Indicá a qué usuarios se restringe la aplicación");
   }
 
-  if (!(state.pruebas && (state.pruebas.qa || "").trim())) faltan.push("Tiempo de Pruebas internas QA");
-  if (!(state.pruebas && (state.pruebas.alpha || "").trim())) faltan.push("Tiempo de Pruebas Alpha con el cliente");
+  const pr = ensurePruebas(state);
+  if (!tienePrueba(pr.qa)) faltan.push("Al menos una Prueba interna QA con tiempo");
+  if (!tienePrueba(pr.alpha)) faltan.push("Al menos una Prueba Alpha con tiempo");
   return faltan;
+}
+
+function pruebaRows(lista, tipo) {
+  return (lista || []).map((x, i) => `
+    <div class="row-flex">
+      <input type="text" data-prueba="${tipo}" data-prueba-idx="${i}" data-prueba-prop="titulo" value="${escapeAttr(x.titulo || "")}" placeholder="Descripción de la prueba">
+      <input type="text" data-prueba="${tipo}" data-prueba-idx="${i}" data-prueba-prop="tiempo" value="${escapeAttr(x.tiempo || "")}" placeholder="Tiempo (ej. 3 h)" style="max-width:140px">
+      <button class="icon-btn" data-prueba-remove="${tipo}" data-prueba-idx="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
 }
 
 export function renderConfirmacionStep(state, devMode) {
   if (!state.meta) state.meta = {};
-  if (!state.pruebas) state.pruebas = { qa: "", alpha: "" };
+  const pruebas = ensurePruebas(state);
   const nes = neSeleccionadas(state);
   const faltan = validar(state);
 
@@ -88,15 +109,18 @@ export function renderConfirmacionStep(state, devMode) {
       </select>
     </div>
 
-    <div class="field-block" style="display:flex;gap:12px;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <label class="field-label">Pruebas internas QA — tiempo <span style="color:#c00">*</span></label>
-        <input type="text" data-prueba-qa value="${escapeAttr(state.pruebas.qa)}" placeholder="Ej. 3 h">
-      </div>
-      <div style="flex:1;min-width:200px">
-        <label class="field-label">Pruebas Alpha con el cliente — tiempo <span style="color:#c00">*</span></label>
-        <input type="text" data-prueba-alpha value="${escapeAttr(state.pruebas.alpha)}" placeholder="Ej. 2 h">
-      </div>
+    <div class="field-block">
+      <label class="field-label">Pruebas internas QA <span style="color:#c00">*</span></label>
+      <p class="step-helper" style="margin:0 0 8px;font-size:12px">Podés agregar varias. Cada una con su tiempo.</p>
+      ${pruebaRows(pruebas.qa, "qa")}
+      <button class="add-btn" data-prueba-add="qa"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar prueba QA</button>
+    </div>
+
+    <div class="field-block">
+      <label class="field-label">Pruebas Alpha con el cliente <span style="color:#c00">*</span></label>
+      <p class="step-helper" style="margin:0 0 8px;font-size:12px">Podés agregar varias. Cada una con su tiempo.</p>
+      ${pruebaRows(pruebas.alpha, "alpha")}
+      <button class="add-btn" data-prueba-add="alpha"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar prueba Alpha</button>
     </div>
 
     <div class="summary-group"><h4>Desarrollos a documentar</h4>
@@ -125,14 +149,30 @@ export function renderConfirmacionStep(state, devMode) {
 
 export function attachConfirmacionListeners(container, state, onChange, inviteToken) {
   if (!state.meta) state.meta = {};
-  if (!state.pruebas) state.pruebas = { qa: "", alpha: "" };
+  const pruebas = ensurePruebas(state);
 
   const st = container.querySelector("[data-status]");
   if (st) st.addEventListener("change", (e) => { state.meta.estado = e.target.value; onChange({ rerender: false }); });
-  const qa = container.querySelector("[data-prueba-qa]");
-  if (qa) qa.addEventListener("input", (e) => { state.pruebas.qa = e.target.value; onChange({ rerender: true }); });
-  const al = container.querySelector("[data-prueba-alpha]");
-  if (al) al.addEventListener("input", (e) => { state.pruebas.alpha = e.target.value; onChange({ rerender: true }); });
+
+  // Pruebas QA / Alpha (listas múltiples).
+  container.querySelectorAll("[data-prueba-prop]").forEach((el) => {
+    const set = (e) => {
+      const tipo = el.getAttribute("data-prueba");
+      const idx = parseInt(el.getAttribute("data-prueba-idx"), 10);
+      pruebas[tipo][idx][el.getAttribute("data-prueba-prop")] = e.target.value;
+    };
+    el.addEventListener("input", (e) => { set(e); onChange({ rerender: false }); });
+    // Al salir del campo re-evaluamos (habilita/deshabilita "Generar") sin perder el foco al tipear.
+    el.addEventListener("change", (e) => { set(e); onChange({ rerender: true }); });
+  });
+  container.querySelectorAll("[data-prueba-add]").forEach((el) => el.addEventListener("click", () => {
+    pruebas[el.getAttribute("data-prueba-add")].push({ titulo: "", tiempo: "" });
+    onChange({ rerender: true });
+  }));
+  container.querySelectorAll("[data-prueba-remove]").forEach((el) => el.addEventListener("click", () => {
+    pruebas[el.getAttribute("data-prueba-remove")].splice(parseInt(el.getAttribute("data-prueba-idx"), 10), 1);
+    onChange({ rerender: true });
+  }));
 
   const enviar = container.querySelector('[data-action="enviar"]');
   if (enviar) enviar.addEventListener("click", async () => {

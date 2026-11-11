@@ -361,7 +361,7 @@ function render() {
   const accionesBar = modoCliente
     ? `<button class="sb-btn" data-cli-borrador ${bloqueado ? "disabled" : ""}><i class="ti ti-device-floppy"></i> Guardar borrador</button>
        <button class="sb-btn primary" data-cli-enviar ${bloqueado ? "disabled" : ""}><i class="ti ti-send"></i> Enviar</button>`
-    : `${verFormBtn}<button class="sb-btn primary" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
+    : `${verFormBtn}<button class="sb-btn save" data-guardar><i class="ti ti-device-floppy"></i> Guardar</button>`;
   const barra = `<div class="sesion-bar">
     <button class="sb-btn" data-volver><i class="ti ti-arrow-left"></i> ${ctx.esExtranet ? "Mis formularios" : "Inicio"}</button>
     <span class="sb-item">${escapeHtml(sesion.neTexto || "Desarrollo")} · #${sesion.elementId}</span>

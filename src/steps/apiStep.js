@@ -33,8 +33,9 @@ function pasoCard(p, i) {
       <div class="row-flex" style="margin-top:8px">
         <select data-api-p="${i}" data-api-pprop="metodo" style="max-width:110px"><option value="">Método…</option>${sel(API_METODOS, p.metodo, false)}</select>
         <input type="text" data-api-p="${i}" data-api-pprop="endpoint" value="${escapeAttr(p.endpoint || "")}" placeholder="Endpoint (opcional) — ej. /api/facturas" style="flex:1">
-        <input type="text" data-api-p="${i}" data-api-pprop="tiempo" value="${escapeAttr(p.tiempo || "")}" placeholder="Tiempo (opc.)" style="max-width:120px">
+        <input type="text" data-api-p="${i}" data-api-pprop="tiempo" value="${escapeAttr(p.tiempo || "")}" placeholder="T. desarrollo (opc.)" style="max-width:150px">
       </div>
+      <p class="step-helper" style="margin:2px 0 0;font-size:11px">Tiempo estimado para <b>construir</b> este paso (no el de ejecución del endpoint).</p>
       <label class="chk-line" style="margin-top:8px">
         <input type="checkbox" data-api-p="${i}" data-api-pprop="mapeaId" ${p.mapeaId ? "checked" : ""}>
         El sistema destino devuelve un ID que se guarda para futuras actualizaciones (mapeo de IDs)
@@ -101,7 +102,7 @@ export function renderAPIStep(state) {
 
     <div class="field-block">
       <label class="field-label">Pasos de la sincronización</label>
-      <p class="step-helper" style="margin-top:2px;font-size:12px">En orden. El tiempo y el endpoint son opcionales: hay pasos que solo se mencionan.</p>
+      <p class="step-helper" style="margin-top:2px;font-size:12px">En orden. El endpoint y el tiempo de desarrollo son opcionales: hay pasos que solo se mencionan.</p>
       ${pasos}
       <button class="add-btn" data-api-padd><i class="ti ti-plus" style="margin-right:4px"></i>Agregar paso</button>
     </div>

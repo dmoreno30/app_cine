@@ -9,12 +9,16 @@ export const INSTITUCIONAL = {
   telefono: "+00 000 000 000"
 };
 
+// Marca "asesores-e" con la "e" en círculo rojo, como en los documentos.
+function wordmark() {
+  return `<span class="ae-wordmark">asesores-<span class="ae-e">e</span></span>`;
+}
+
 export function renderHeader() {
   return `
     <header class="app-header">
-      <div class="logo-dot"></div>
-      <div>
-        <p class="app-title">${INSTITUCIONAL.nombre}</p>
+      <div class="ae-brand">
+        <p class="app-title">${wordmark()}</p>
         <p class="app-sub">${INSTITUCIONAL.tagline}</p>
       </div>
     </header>`;
