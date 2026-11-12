@@ -99,9 +99,11 @@ function renderEntityForm(state, key) {
   const esPipeline = cfg.type === "pipeline";
   const pipe = esPipeline ? pipeActivo(state, key) : data;
 
-  // Barra de selección de pipelines (solo pipeline)
+  // Barra de selección de pipelines. Prospectos NUNCA tiene varios pipelines,
+  // así que no mostramos ni el selector ni el campo "Nombre del pipeline".
+  const permiteMultiPipeline = esPipeline && key !== "prospectos";
   let pipesBar = "";
-  if (esPipeline) {
+  if (permiteMultiPipeline) {
     const pipes = Array.isArray(data.pipelines) ? data.pipelines : [];
     const pIdx = data.pipelineActivo || 0;
     const chips = pipes.map((p, i) => `
@@ -141,7 +143,7 @@ function renderEntityForm(state, key) {
     body = renderFieldList(key, pipe.camposPersonalizados)
       + renderActividad(key, "actividadCampos", `Crear los campos y ordenar la ficha de ${cfg.label.toLowerCase()}`, pipe.actividadCampos);
   } else if (activeSection === "autos") {
-    body = renderAutomatizaciones(key, pipe.automatizaciones || [], pipe.autoTiempos || [], cfg.type);
+    body = renderAutomatizaciones(key, pipe.automatizaciones || [], cfg.type);
   }
 
   return `${cabecera}
@@ -258,7 +260,7 @@ function renderPasoAPaso(key, pasos, label) {
     </div>`;
 }
 
-function renderAutomatizaciones(key, autos, autoTiempos, tipo) {
+function renderAutomatizaciones(key, autos, tipo) {
   const esPipeline = tipo === "pipeline";
   const rows = autos.map((a, i) => `
     <div class="rep-card">
@@ -266,35 +268,28 @@ function renderAutomatizaciones(key, autos, autoTiempos, tipo) {
         <span class="auto-num">${i + 1}</span>
         <button class="icon-btn" data-auto-remove="${key}|${i}" style="margin-left:auto"><i class="ti ti-x"></i></button>
       </div>
-      ${esPipeline ? `<div class="paso-campo"><label class="paso-lbl">Título</label>
+      ${esPipeline ? `<div class="paso-campo"><label class="paso-lbl">Título <span style="font-weight:400;color:var(--text-secondary)">— es lo que irá a la tabla de tiempos del iCINE</span></label>
         <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="parametro" value="${escapeAttr(a.parametro || "")}" placeholder='Ej. "Cambio de título y notificaciones"'></div>` : ""}
       <div class="paso-campo"><label class="paso-lbl">¿Qué hace?</label>
-        <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Describe qué hace la automatización / proceso de negocio">${escapeHtml(a.valor || "")}</textarea></div>
+        <textarea data-auto="${key}" data-auto-idx="${i}" data-auto-prop="valor" rows="2" placeholder="Describe qué hace la automatización / proceso de negocio (sin el tiempo)">${escapeHtml(a.valor || "")}</textarea></div>
       ${esPipeline ? `<div class="paso-campo"><label class="paso-lbl">Etapa donde se ejecuta</label>
         <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="etapa" value="${escapeAttr(a.etapa || "")}" placeholder="Ej. Nuevo Prospecto"></div>` : ""}
-    </div>`).join("");
-
-  const tiemposRows = (autoTiempos || []).map((t, i) => `
-    <div class="row-flex">
-      <input type="text" data-autot-idx="${i}" data-autot-prop="descripcion" value="${escapeAttr(t.descripcion || "")}" placeholder="Descripción (ej. Automatizaciones del pipeline)">
-      <input type="text" data-autot-idx="${i}" data-autot-prop="tiempo" value="${escapeAttr(t.tiempo || "")}" placeholder="Tiempo (ej. 3 h)" style="max-width:150px">
-      <button class="icon-btn" data-autot-remove="${i}"><i class="ti ti-x"></i></button>
+      <div class="paso-campo"><label class="paso-lbl"><i class="ti ti-clock-bolt" style="color:#056AA1"></i> Tiempo de desarrollo <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
+        <input type="text" data-auto="${key}" data-auto-idx="${i}" data-auto-prop="tiempo" value="${escapeAttr(a.tiempo || "")}" placeholder="Ej. 2 h" style="max-width:200px"></div>
     </div>`).join("");
 
   const titulo = esPipeline
-    ? `Automatizaciones / Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— título, qué hace y etapa</span>`
-    : `Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— qué hace</span>`;
+    ? `Automatizaciones <span style="font-weight:400;color:var(--text-secondary)">— título, qué hace, etapa y tiempo</span>`
+    : `Procesos de negocio <span style="font-weight:400;color:var(--text-secondary)">— qué hace y tiempo</span>`;
+  const ayuda = esPipeline
+    ? `El <b>título</b> es lo que aparecerá como tarea en el iCINE, con su tiempo. En "¿Qué hace?" no pongas el tiempo.`
+    : `El tiempo de cada proceso se suma a la tabla de tiempos del iCINE.`;
   return `
     <div class="field-block">
       <label class="field-label pc-sec">${titulo}</label>
+      <p class="step-helper" style="margin-top:2px;font-size:12px">${ayuda}</p>
       ${rows}
       <button class="add-btn" data-auto-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar ${esPipeline ? "automatización" : "proceso"}</button>
-
-      <div style="border-top:1px dashed #ddd;margin-top:14px;padding-top:12px">
-        <label class="field-label" style="font-size:13.5px"><i class="ti ti-clock"></i> Tiempo de las automatizaciones <span style="font-weight:400;color:var(--text-secondary)">— se suma al iCINE</span></label>
-        ${tiemposRows || '<p style="font-size:12px;color:#999;margin:4px 0">Sin tiempos todavía.</p>'}
-        <button class="add-btn small" data-autot-add="${key}"><i class="ti ti-plus" style="margin-right:4px"></i>Agregar tiempo</button>
-      </div>
     </div>`;
 }
 
@@ -445,17 +440,6 @@ export function attachProcesoComercialListeners(container, state, onChange) {
   // Toggle minimizar todo el proceso (form de la entidad)
   const formToggle = container.querySelector("[data-form-toggle]");
   if (formToggle) formToggle.addEventListener("click", () => { formColapsado = !formColapsado; onChange({ rerender: true }); });
-
-  // Tiempos de automatizaciones (campo múltiple) — sobre la entidad activa
-  const autoT = () => { const e = pipeActivo(state, activeEntityTab); if (!Array.isArray(e.autoTiempos)) e.autoTiempos = []; return e.autoTiempos; };
-  container.querySelectorAll("[data-autot-prop]").forEach((el) => el.addEventListener("input", (e) => {
-    const i = parseInt(el.getAttribute("data-autot-idx"), 10); const arr = autoT();
-    if (!arr[i]) arr[i] = { descripcion: "", tiempo: "" };
-    arr[i][el.getAttribute("data-autot-prop")] = e.target.value; onChange({ rerender: false });
-  }));
-  const autotAdd = container.querySelector("[data-autot-add]");
-  if (autotAdd) autotAdd.addEventListener("click", () => { autoT().push({ descripcion: "", tiempo: "" }); onChange({ rerender: true }); });
-  container.querySelectorAll("[data-autot-remove]").forEach((el) => el.addEventListener("click", () => { autoT().splice(parseInt(el.getAttribute("data-autot-remove"), 10), 1); onChange({ rerender: true }); }));
 
   // Etapa de cierre exitoso (única por entidad)
   container.querySelectorAll("[data-exito-prop]").forEach((el) => {
