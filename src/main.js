@@ -140,6 +140,7 @@ async function refrescarLista() {
   sesion.lista = (r && r.ok) ? r.items : [];
 }
 async function crear(neTexto, tipo, conFormulario) {
+  if (ctx.esExtranet) return;   // el extranet no puede crear desarrollos
   if (!ctx.proyectoId) { setStatus("No se detectó el proyecto."); return; }
   sesion.neTexto = neTexto; sesion.tipo = tipo || "icine";
   sesion.conFormulario = !!conFormulario; sesion.modoCliente = false; sesion.formStatus = "";
@@ -151,6 +152,7 @@ async function crear(neTexto, tipo, conFormulario) {
   else setStatus("Error: " + ((r && r.mensaje) || "no se pudo crear"));
 }
 async function continuar(elementId) {
+  if (ctx.esExtranet) return;   // el extranet no abre el iCINE del consultor
   setStatus("Cargando…");
   const r = await cargarDesarrollo(elementId);
   if (r && r.ok) {
@@ -278,6 +280,9 @@ function renderCliente() {
 function render() {
   const app = document.getElementById("app");
   try { document.body.classList.toggle("cliente-mode", !!(ctx.esExtranet || sesion.modoCliente)); } catch (e) { /* noop */ }
+
+  // Candado de seguridad: el extranet NUNCA ve la vista de consultor (inicio/crear).
+  if (ctx.esExtranet && vista === "inicio") { vista = "cliente"; }
 
   if (vista === "inicio") {
     app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;

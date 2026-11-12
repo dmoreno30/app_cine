@@ -29,18 +29,26 @@ export async function obtenerContextoBX() {
   const u = await call("user.current", {});
   const usuario = u ? { id: u.ID, nombre: `${u.NAME || ""} ${u.LAST_NAME || ""}`.trim() } : null;
 
-  // Extranet: USER_TYPE === "extranet". user.current no siempre lo trae,
-  // así que si falta lo consultamos con user.get por ID.
-  let esExtranet = false;
+  // Tipo de usuario: empleado (intranet / consultor) vs extranet (cliente).
+  // Es un control de VISIBILIDAD: el extranet SOLO debe ver sus formularios.
+  // Por eso la lógica es "fail-safe": tratamos al usuario como extranet salvo que
+  // podamos CONFIRMAR que es empleado (USER_TYPE "employee" o pertenece a un
+  // departamento). Ante cualquier duda o error → extranet (solo formularios).
+  let esExtranet = true;
   try {
     let userType = u && u.USER_TYPE;
+    let dept = u && u.UF_DEPARTMENT;
     if (userType === undefined && u && u.ID) {
       const ug = await call("user.get", { FILTER: { ID: u.ID } });
       const uu = Array.isArray(ug) ? ug[0] : (ug && Object.values(ug)[0]);
-      userType = uu && uu.USER_TYPE;
+      if (uu) { userType = uu.USER_TYPE; if (dept === undefined) dept = uu.UF_DEPARTMENT; }
     }
-    esExtranet = String(userType || "").toLowerCase() === "extranet";
-  } catch (e) { esExtranet = false; }
+    const tipo = String(userType || "").toLowerCase();
+    const tieneDepto = Array.isArray(dept) ? dept.filter(Boolean).length > 0 : !!dept;
+    // Empleado SOLO si lo confirmamos; extranet/email nunca lo son.
+    const esEmpleado = tipo === "employee" || (tipo !== "extranet" && tipo !== "email" && tieneDepto);
+    esExtranet = !esEmpleado;
+  } catch (e) { esExtranet = true; }
 
   let proyectoNombre = "", jefeId = "", jefeNombre = "";
   if (proyectoId) {
