@@ -27,7 +27,7 @@ const devProy = new URLSearchParams(window.location.search).get("proyecto"); // 
 // Fuerza modo cliente en pruebas fuera de Bitrix: ?modo=cliente
 const devModo = new URLSearchParams(window.location.search).get("modo");
 
-const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null, esExtranet: false };
+const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null, esExtranet: false, debug: null };
 const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "", conFormulario: false, modoCliente: false, formStatus: "", formularios: [] };
 
 function normalizar(s) {
@@ -276,6 +276,18 @@ function renderCliente() {
   </div>`;
 }
 
+/* ---------------- DIAGNÓSTICO (temporal) ---------------- */
+function renderDiag() {
+  const d = ctx.debug || {};
+  const vistaActual = ctx.esExtranet ? "CLIENTE (solo formularios)" : "CONSULTOR (iCINE + formularios)";
+  return `<div style="background:#fff8e1;border:1px solid #e0b400;border-radius:8px;padding:8px 12px;margin-bottom:12px;font:12px/1.5 ui-monospace,monospace;color:#5a4500">
+    <b>DIAGNÓSTICO</b> — vista: <b>${vistaActual}</b> · esExtranet=<b>${ctx.esExtranet}</b> · modo=${ctx.modoForzado || "automático"}<br>
+    USER_TYPE (user.current)=<b>${d.userTypeCurrent}</b> · resuelto=<b>${d.userTypeResuelto}</b> · user.get=${d.userGet || "-"}<br>
+    campos de user.current: ${d.keys || "-"}${d.error ? " · ERROR: " + d.error : ""}<br>
+    <span style="color:#8a6d00">Forzar vista: agregá <code>?modo=cliente</code> o <code>?modo=dev</code> a la URL.</span>
+  </div>`;
+}
+
 /* ---------------- RENDER GENERAL ---------------- */
 function render() {
   const app = document.getElementById("app");
@@ -285,7 +297,7 @@ function render() {
   if (ctx.esExtranet && vista === "inicio") { vista = "cliente"; }
 
   if (vista === "inicio") {
-    app.innerHTML = `${renderHeader()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
+    app.innerHTML = `${renderHeader()}${renderDiag()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
     const cr = app.querySelector("[data-crear]");
     if (cr) cr.addEventListener("click", () => {
       const t = app.querySelector("[data-ne-texto]"); const md = app.querySelector("[data-crear-modo]");
@@ -300,7 +312,7 @@ function render() {
   }
 
   if (vista === "cliente") {
-    app.innerHTML = `${renderHeader()}${renderCliente()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
+    app.innerHTML = `${renderHeader()}${renderDiag()}${renderCliente()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
     app.querySelectorAll("[data-abrir-form]").forEach((el) => el.addEventListener("click", () => abrirFormulario(el.getAttribute("data-abrir-form"))));
     return;
   }
@@ -446,6 +458,8 @@ async function init() {
   ctx.jefeNombre = c.jefeNombre || "";
   ctx.usuario = c.usuario || null;
   ctx.esExtranet = !!c.esExtranet || devModo === "cliente";
+  ctx.debug = c.debug || null;
+  ctx.modoForzado = devModo === "cliente" ? "cliente (forzado por URL)" : (devModo === "dev" ? "consultor (forzado por URL)" : "automático");
   if (ctx.esExtranet) {
     vista = "cliente";
     await refrescarFormularios();

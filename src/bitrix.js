@@ -32,16 +32,25 @@ export async function obtenerContextoBX() {
   // Extranet solo si lo confirmamos: USER_TYPE === "extranet" (o email). Si no se
   // puede determinar, se asume intranet (consultor) para no bloquear su trabajo.
   let esExtranet = false;
+  let debug = {};
   try {
     let userType = u && u.USER_TYPE;
+    let userGetEstado = "no consultado";
     if (userType === undefined && u && u.ID) {
       const ug = await call("user.get", { FILTER: { ID: u.ID } });
       const uu = Array.isArray(ug) ? ug[0] : (ug && Object.values(ug)[0]);
       userType = uu && uu.USER_TYPE;
+      userGetEstado = uu ? "ok" : "null / sin acceso";
     }
     const tipo = String(userType || "").toLowerCase();
     esExtranet = tipo === "extranet" || tipo === "email";
-  } catch (e) { esExtranet = false; }
+    debug = {
+      userTypeCurrent: (u && ("USER_TYPE" in u)) ? u.USER_TYPE : "(ausente)",
+      userTypeResuelto: userType === undefined ? "(indefinido)" : userType,
+      userGet: userGetEstado,
+      keys: u ? Object.keys(u).join(", ") : "(sin user)"
+    };
+  } catch (e) { esExtranet = false; debug = { error: String(e && e.message) }; }
 
   let proyectoNombre = "", jefeId = "", jefeNombre = "";
   if (proyectoId) {
@@ -54,5 +63,5 @@ export async function obtenerContextoBX() {
       if (j) jefeNombre = `${j.NAME || ""} ${j.LAST_NAME || ""}`.trim();
     }
   }
-  return { proyectoId, usuario, proyectoNombre, jefeId, jefeNombre, esExtranet };
+  return { proyectoId, usuario, proyectoNombre, jefeId, jefeNombre, esExtranet, debug };
 }
