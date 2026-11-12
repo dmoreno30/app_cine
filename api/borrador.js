@@ -77,6 +77,35 @@ async function leerFormStatus(elementId) {
   return el ? formKey(val(el[PROP_FORM])) : "";
 }
 
+// Lee el elemento completo (todos los campos que debemos preservar en un update).
+async function leerElemento(elementId) {
+  const r = await callBitrix("lists.element.get", {
+    IBLOCK_TYPE_ID, IBLOCK_ID, FILTER: { ID: elementId },
+    SELECT: ["ID", "NAME", PROP_PROYECTO, PROP_NE_TEXTO, PROP_TIPO, PROP_JEFE, PROP_DESARROLLADOR, PROP_STATUS, PROP_FORM]
+  });
+  return Array.isArray(r) ? r[0] : (r && Object.values(r)[0]);
+}
+
+// IMPORTANTE: lists.element.update SOBRESCRIBE todo el elemento y borra lo que no se
+// envía. Por eso, para un guardado parcial (cliente, o envío) hay que reconstruir
+// TODOS los campos a partir del elemento actual. Los campos de tipo lista
+// (TIPO, STATUS, FORM) se escriben como arreglo de IDs de enum.
+function camposDesde(el) {
+  const tipoKey = val(el[PROP_TIPO]) === TIPO.t24 ? "t24" : "icine";
+  const statusKey = val(el[PROP_STATUS]) === STATUS.desarrollo ? "desarrollo" : "borrador";
+  const fields = {
+    NAME: el.NAME || "Formulario iCINE",
+    [PROP_PROYECTO]: val(el[PROP_PROYECTO]),
+    [PROP_NE_TEXTO]: val(el[PROP_NE_TEXTO]),
+    [PROP_TIPO]: TIPO[tipoKey],
+    [PROP_STATUS]: STATUS[statusKey]
+  };
+  const jefe = val(el[PROP_JEFE]); if (jefe) fields[PROP_JEFE] = jefe;
+  const dev = val(el[PROP_DESARROLLADOR]); if (dev) fields[PROP_DESARROLLADOR] = dev;
+  const fs = formKey(val(el[PROP_FORM])); if (fs) fields[PROP_FORM] = [FORM[fs]];
+  return { fields, formStatus: fs };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ ok: false, mensaje: "Método no permitido" });
   const b = req.body || {};
@@ -117,23 +146,36 @@ export default async function handler(req, res) {
     }
     if (b.action === "save") {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
-      // Guardado del cliente (extranet): solo toca el JSON y respeta el bloqueo.
+      // Guardado del cliente (extranet): cambia solo el JSON, pero reenviando TODOS
+      // los demás campos (si no, el update los borra, p. ej. NAME → error de Bitrix).
       if (b.origen === "cliente") {
-        let fs = ""; try { fs = await leerFormStatus(b.elementId); } catch (e) { fs = ""; } // una lectura con error no debe bloquear el guardado
-        if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado y no se puede editar." });
-        await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}) } });
-        return res.json({ ok: true, elementId: b.elementId, formStatus: fs || "pendiente" });
+        const el = await leerElemento(b.elementId);
+        if (!el) return res.status(404).json({ ok: false, mensaje: "No se encontró el formulario." });
+        const { fields, formStatus } = camposDesde(el);
+        if (formStatus === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado y no se puede editar." });
+        fields[PROP_JSON] = JSON.stringify(b.borrador || {});
+        await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: fields });
+        return res.json({ ok: true, elementId: b.elementId, formStatus: formStatus || "pendiente" });
       }
-      // Guardado del desarrollador: no toca PROP_FORM (se preserva).
-      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: armarFields(b) });
+      // Guardado del desarrollador: reenvía todos los campos y preserva PROP_FORM
+      // leyendo el actual (el update borra lo que no se envíe).
+      const fields = armarFields(b);
+      if (!fields[PROP_FORM]) {
+        try { const el = await leerElemento(b.elementId); const fs = el ? formKey(val(el[PROP_FORM])) : ""; if (fs) fields[PROP_FORM] = [FORM[fs]]; } catch (e) { /* si falla la lectura, seguimos */ }
+      }
+      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: fields });
       return res.json({ ok: true, elementId: b.elementId });
     }
     // Envío final del cliente: consolida el JSON y bloquea (enviado).
     if (b.action === "enviar") {
       if (!b.elementId) return res.status(400).json({ ok: false, mensaje: "Falta el ID del registro." });
-      const fs = await leerFormStatus(b.elementId);
-      if (fs === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado." });
-      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: { [PROP_JSON]: JSON.stringify(b.borrador || {}), [PROP_FORM]: [FORM.enviado] } });
+      const el = await leerElemento(b.elementId);
+      if (!el) return res.status(404).json({ ok: false, mensaje: "No se encontró el formulario." });
+      const { fields, formStatus } = camposDesde(el);
+      if (formStatus === "enviado") return res.status(423).json({ ok: false, mensaje: "El formulario ya fue enviado." });
+      fields[PROP_JSON] = JSON.stringify(b.borrador || {});
+      fields[PROP_FORM] = [FORM.enviado];  // reenvía todo + bloquea
+      await callBitrix("lists.element.update", { IBLOCK_TYPE_ID, IBLOCK_ID, ELEMENT_ID: b.elementId, FIELDS: fields });
       return res.json({ ok: true, elementId: b.elementId, formStatus: "enviado" });
     }
     if (b.action === "load") {
