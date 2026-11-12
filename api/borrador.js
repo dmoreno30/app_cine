@@ -133,7 +133,7 @@ export default async function handler(req, res) {
       const FILTER = { ["=" + PROP_PROYECTO]: String(b.proyectoId) };
       const r = await callBitrix("lists.element.get", { IBLOCK_TYPE_ID, IBLOCK_ID, FILTER, SELECT: ["ID", "NAME", PROP_NE_TEXTO, PROP_FORM] });
       const items = (Array.isArray(r) ? r : Object.values(r || {}))
-        .map((el) => ({ id: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]), formStatus: formKey(val(el[PROP_FORM])) }))
+        .map((el) => ({ id: el.ID, nombre: el.NAME, neTexto: val(el[PROP_NE_TEXTO]), formStatus: formKeyRobusto(val(el[PROP_FORM])) }))
         .filter((x) => x.formStatus); // solo los que tienen formulario habilitado
       return res.json({ ok: true, items });
     }
