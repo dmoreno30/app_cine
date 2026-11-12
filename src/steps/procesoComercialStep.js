@@ -6,17 +6,16 @@ import { renderFieldList, attachFieldListeners } from "../components/fieldList.j
 import { renderExampleStages } from "../components/ejemploEtapas.js";
 import { escapeHtml, escapeAttr, pipeActivo } from "../utils.js";
 
-// Sub-estado local a este paso: cuál entidad está expandida en el mapa
-// y cuál sub-tab está activa. Vive aquí (no en el estado persistido)
-// porque es solo de navegación, no data del cliente.
-let expandedKey = null;
-let activeEntityTab = null;
+// Sub-estado local a este paso: cuál entidad se está configurando (una sola,
+// resaltada en el mapa) y cuál sub-sección está activa. Vive aquí (no en el
+// estado persistido) porque es solo de navegación, no data del cliente.
+let activeEntityTab = null;   // pieza seleccionada = la que se configura
 let rolesColapsado = false;   // minimizar el bloque de Roles y permisos
 let formColapsado = false;    // minimizar todo el proceso (form de la entidad)
 let activeSection = null;     // pestaña de sección activa dentro de la entidad
 
 function entidadesHabilitadasEnOrden(state) {
-  return ORDEN_ENTIDADES.filter((k) => state.entidadesHabilitadas[k]);
+  return ORDEN_ENTIDADES.filter((k) => ENTIDADES[k].obligatorio || state.entidadesHabilitadas[k]);
 }
 
 export function renderProcesoComercialStep(state) {
@@ -26,17 +25,10 @@ export function renderProcesoComercialStep(state) {
   }
 
   const rolesHtml = renderRolesCRM(state);
-  const mapHtml = renderEntityMap(state, expandedKey);
+  // El mapa resalta la pieza que se está configurando (única selección).
+  const mapHtml = renderEntityMap(state, activeEntityTab);
 
-  const subtabsHtml = habilitadas.map((key) => {
-    const cfg = ENTIDADES[key];
-    return `<div class="subtab ${key === activeEntityTab ? "active" : ""}" data-entity-tab="${key}">
-      <i class="ti ${cfg.icon}"></i>${cfg.label}
-      <span class="tag">${cfg.type === "pipeline" ? "proceso" : cfg.type === "postventa" ? "proceso" : "campos"}</span>
-    </div>`;
-  }).join("");
-
-  const formHtml = activeEntityTab ? renderEntityForm(state, activeEntityTab) : `<p class="step-helper">No hay entidades habilitadas todavía. Activá al menos una en el mapa de arriba.</p>`;
+  const formHtml = activeEntityTab ? renderEntityForm(state, activeEntityTab) : `<p class="step-helper">No hay piezas activas todavía. Activá al menos una en el mapa de arriba.</p>`;
 
   const introHtml = `
     <div class="field-block">
@@ -65,8 +57,7 @@ export function renderProcesoComercialStep(state) {
     ${introHtml}
     ${capHtml}
     ${mapHtml}
-    <div class="subtabs">${subtabsHtml}</div>
-    <div id="entity-form-container">${formHtml}</div>`;
+    <div id="entity-form-container" class="entity-form-panel">${formHtml}</div>`;
 }
 
 function renderEntityForm(state, key) {
@@ -77,7 +68,11 @@ function renderEntityForm(state, key) {
 
   const cabecera = `
     <div class="pc-form-head">
-      <p class="step-title" style="margin:0">${cfg.label}<span class="badge">${cfg.type === "pipeline" ? "proceso" : "solo campos"}</span></p>
+      <p class="step-title" style="margin:0;display:flex;align-items:center;gap:8px">
+        <span class="pc-config-tag"><i class="ti ti-adjustments-alt"></i> Configurando</span>
+        <i class="ti ${cfg.icon}" style="color:var(--ae-red)"></i> ${cfg.label}
+        <span class="badge">${cfg.type === "pipeline" ? "proceso" : "solo campos"}</span>
+      </p>
       <button class="rep-cat-btn" data-form-toggle><i class="ti ti-chevrons-${formColapsado ? "down" : "up"}"></i> ${formColapsado ? "Expandir" : "Minimizar"} todo</button>
     </div>
     <p class="step-helper">${cfg.helper}</p>`;
@@ -339,24 +334,32 @@ export function renderRolesCRM(state) {
 
 export function attachProcesoComercialListeners(container, state, onChange) {
   attachEntityMapListeners(container, state, (result) => {
-    // Toggle simple: si se hace clic en la card ya expandida, se colapsa la info.
-    if (result.expandKey !== undefined) {
-      expandedKey = expandedKey === result.expandKey ? null : result.expandKey;
-      // Además, hacer clic en la card selecciona esa entidad como pestaña activa
-      // debajo (si está habilitada) — antes había que buscarla en las sub-tabs.
-      if (state.entidadesHabilitadas[result.expandKey]) {
-        activeEntityTab = result.expandKey;
+    // Interruptor: activa/desactiva la pieza.
+    if (result.toggleKey !== undefined) {
+      const key = result.toggleKey;
+      state.entidadesHabilitadas[key] = result.checked;
+      if (result.checked) {
+        activeEntityTab = key;          // al activar, pasa a ser la que se configura
+        activeSection = null;
+      } else if (activeEntityTab === key) {
+        activeEntityTab = entidadesHabilitadasEnOrden(state)[0] || null;  // al apagar la activa, saltar a otra
+        activeSection = null;
       }
+      onChange({ rerender: true });
+      return;
+    }
+    // Clic en la tarjeta: seleccionar para configurar (encendiéndola si estaba apagada).
+    if (result.selectKey !== undefined) {
+      const key = result.selectKey;
+      if (!ENTIDADES[key].obligatorio && !state.entidadesHabilitadas[key]) {
+        state.entidadesHabilitadas[key] = true;  // un clic en una apagada la enciende y la selecciona
+      }
+      activeEntityTab = key;
+      activeSection = null;  // volver a la primera sección al cambiar de pieza
+      onChange({ rerender: true });
+      return;
     }
     onChange(result);
-  });
-
-  container.querySelectorAll("[data-entity-tab]").forEach((el) => {
-    el.addEventListener("click", () => {
-      activeEntityTab = el.getAttribute("data-entity-tab");
-      activeSection = null; // volver a la primera sección al cambiar de entidad
-      onChange({ rerender: true });
-    });
   });
 
   // Pestañas de sección dentro de la entidad
