@@ -381,3 +381,30 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 .pipe-tab.active{ background:#0f2b3a; border-color:#0f2b3a; color:#fff; }
 .pipe-add{ display:inline-flex; align-items:center; gap:5px; padding:8px 14px; border-radius:999px; font-size:13px; font-weight:600; color:#056AA1; background:#eaf4fb; border:1.5px dashed #9ed0ea; cursor:pointer; }
 .pipe-add:hover{ background:#dceefa; }
+/* ---------------- NAVEGACIÓN POR ÁRBOL (wizard) ---------------- */
+.wizard-mode #app{ max-width:1120px; }
+.wizard-layout{ display:flex; gap:22px; align-items:flex-start; }
+.wizard-tree{ flex:0 0 250px; position:sticky; top:16px; align-self:flex-start; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 10px; }
+.wizard-main{ flex:1; min-width:0; }
+.wz-area{ margin-bottom:8px; }
+.wz-area + .wz-area{ border-top:1px solid var(--border); padding-top:8px; }
+.wz-area-h{ display:flex; align-items:center; gap:7px; font-size:11.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-muted); padding:6px 8px 4px; }
+.wz-area-h i{ font-size:15px; }
+.wz-leaf{ display:flex; align-items:center; gap:9px; padding:9px 11px; border-radius:9px; font-size:13.5px; font-weight:500; color:var(--text-secondary); cursor:pointer; border:1px solid transparent; transition:all .12s; }
+.wz-leaf span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.wz-leaf i{ font-size:17px; flex:0 0 auto; }
+.wz-leaf:hover{ background:#f1f5f8; color:#1b2b33; }
+.wz-leaf.done{ color:var(--ae-blue-dark); }
+.wz-leaf.done i{ color:var(--ae-blue); }
+.wz-leaf.active{ background:var(--ae-red); border-color:var(--ae-red); color:#fff; box-shadow:0 2px 8px rgba(227,13,41,.22); }
+.wz-leaf.active i{ color:#fff; }
+
+/* Cliente (extranet): árbol con el acento del modo cliente */
+.cliente-mode.wizard-mode #app{ max-width:980px; }
+.cliente-mode .wz-leaf.active{ background:var(--cli-accent); border-color:var(--cli-accent); box-shadow:0 4px 12px rgba(227,13,41,.28); }
+
+@media (max-width:760px){
+  .wizard-layout{ flex-direction:column; }
+  .wizard-tree{ position:static; flex:1 1 auto; width:100%; box-sizing:border-box; }
+  .wz-area{ display:inline-block; vertical-align:top; }
+}

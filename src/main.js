@@ -1,6 +1,7 @@
 import { defaultState, resetState, PIPELINE_NOMBRE_DEF } from "./state.js";
 import { ENTIDADES } from "./data/config.js";
 import { getPasos, renderStepper, attachStepperListeners } from "./components/stepper.js";
+import { renderTree } from "./components/tree.js";
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
 import { renderNEStep, attachNEListeners } from "./steps/neStep.js";
@@ -21,11 +22,14 @@ import { escapeHtml, escapeAttr } from "./utils.js";
 
 let state = normalizar(resetState());
 let currentStep = 0;
-let vista = "inicio";            // "inicio" | "form" | "cliente"
+let vista = "inicio";            // "inicio" | "init" | "form" | "cliente"
 let cargando = true;
+// Datos capturados en la pantalla de inicialización (antes de crear el registro).
+let initDatos = { neTexto: "", cliente: "", url: "", modo: "icine" };
 const devProy = new URLSearchParams(window.location.search).get("proyecto"); // fallback de prueba
 // Fuerza modo cliente en pruebas fuera de Bitrix: ?modo=cliente
 const devModo = new URLSearchParams(window.location.search).get("modo");
+const devDebug = new URLSearchParams(window.location.search).get("debug") === "1"; // muestra el recuadro de diagnóstico
 
 const ctx = { proyectoId: null, proyectoNombre: "", jefeId: "", jefeNombre: "", usuario: null, esExtranet: false, debug: null };
 const sesion = { elementId: null, tipo: "icine", neTexto: "", lista: [], status: "", conFormulario: false, modoCliente: false, formStatus: "", formularios: [] };
@@ -139,12 +143,15 @@ async function refrescarLista() {
   const r = await listarDesarrollos(ctx.proyectoId);
   sesion.lista = (r && r.ok) ? r.items : [];
 }
-async function crear(neTexto, tipo, conFormulario) {
+async function crear(neTexto, tipo, conFormulario, base = {}) {
   if (ctx.esExtranet) return;   // el extranet no puede crear desarrollos
   if (!ctx.proyectoId) { setStatus("No se detectó el proyecto."); return; }
   sesion.neTexto = neTexto; sesion.tipo = tipo || "icine";
   sesion.conFormulario = !!conFormulario; sesion.modoCliente = false; sesion.formStatus = "";
   state = normalizar(resetState());
+  // Datos base capturados en la inicialización (quedan precargados y editables).
+  if (base.cliente) state.cliente = base.cliente;
+  if (base.url) { if (!state.meta) state.meta = {}; state.meta.url = base.url; }
   aplicarMetaContexto();
   setStatus("Creando…");
   const r = await crearDesarrollo(datosComunes());
@@ -238,17 +245,48 @@ function renderInicio() {
     <p class="step-helper">Proyecto: <b>${escapeHtml(ctx.proyectoNombre || "")}</b> (#${ctx.proyectoId})</p>
     <div class="ini-lista">${filas}</div>
     <hr style="margin:18px 0;border:none;border-top:1px solid #eee">
-    <p class="field-label">Crear un nuevo desarrollo</p>
-    <input type="text" data-ne-texto placeholder="Título del desarrollo (ej. Proceso comercial - chatbot - reportes)">
-    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-      <select data-crear-modo title="¿Qué deseas crear?">
-        <option value="icine">Crear iCINE</option>
-        <option value="form">Crear Formulario + iCINE</option>
-        <option value="form-t24" disabled>Crear Formulario para T24 (próximamente)</option>
-      </select>
-      <button class="sb-btn primary" data-crear><i class="ti ti-plus"></i> Crear</button>
+    <button class="sb-btn primary" data-nuevo><i class="ti ti-plus"></i> Inicializar nuevo desarrollo</button>
+    <p class="step-helper" style="margin-top:6px">Se abre una pantalla para cargar los datos base (título, cliente y URL). Luego vos o el cliente continúan el llenado.</p>
+  </div>`;
+}
+
+/* ---------------- PANTALLA DE INICIALIZACIÓN ---------------- */
+// El jefe de proyecto (o cualquier usuario interno del proyecto) inicializa el
+// desarrollo cargando datos base. Estos quedan guardados y se pueden editar luego
+// en el paso "Sobre la empresa".
+function renderInit() {
+  if (!ctx.proyectoId) {
+    return `<div class="card"><p class="step-title">No se detectó el proyecto</p>
+      <p class="step-helper">Abre esta aplicación dentro de tu proyecto en Bitrix24.</p></div>`;
+  }
+  const d = initDatos;
+  return `<div class="card">
+    <p class="step-title"><i class="ti ti-rocket"></i> Inicializar desarrollo</p>
+    <p class="step-helper">Cargá los datos base del proyecto. Quedan guardados y editables más adelante; luego vos o el cliente continúan el resto del llenado.</p>
+    <div class="field-block">
+      <label class="field-label">Título del desarrollo <span style="color:#c00">*</span></label>
+      <input type="text" data-init-netexto value="${escapeAttr(d.neTexto)}" placeholder="Ej. Proceso comercial - chatbot - reportes">
     </div>
-    <p class="step-helper" style="margin-top:6px">"Formulario + iCINE" habilita el formulario que el cliente (extranet) llenará; luego, como desarrollador, abres el iCINE o el formulario desde la lista.</p>
+    <div class="field-block">
+      <label class="field-label">Nombre del cliente / empresa</label>
+      <input type="text" data-init-cliente value="${escapeAttr(d.cliente)}" placeholder="Ej. Bicicentro">
+    </div>
+    <div class="field-block">
+      <label class="field-label">URL del Bitrix24 del cliente</label>
+      <input type="text" data-init-url value="${escapeAttr(d.url)}" placeholder="https://cliente.bitrix24.es">
+    </div>
+    <div class="field-block">
+      <label class="field-label">¿Qué deseas crear?</label>
+      <select data-init-modo>
+        <option value="icine" ${d.modo === "icine" ? "selected" : ""}>Crear iCINE</option>
+        <option value="form" ${d.modo === "form" ? "selected" : ""}>Crear Formulario + iCINE</option>
+      </select>
+      <p class="step-helper" style="margin-top:6px">"Formulario + iCINE" habilita el formulario que el cliente (extranet) llenará.</p>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <button class="sb-btn" data-init-cancelar><i class="ti ti-arrow-left"></i> Cancelar</button>
+      <button class="sb-btn primary" data-init-crear><i class="ti ti-check"></i> Crear y continuar</button>
+    </div>
   </div>`;
 }
 
@@ -278,11 +316,14 @@ function renderCliente() {
 
 /* ---------------- DIAGNÓSTICO (temporal) ---------------- */
 function renderDiag() {
+  if (!devDebug) return "";   // oculto salvo con ?debug=1
   const d = ctx.debug || {};
   const vistaActual = ctx.esExtranet ? "CLIENTE (solo formularios)" : "CONSULTOR (iCINE + formularios)";
   return `<div style="background:#fff8e1;border:1px solid #e0b400;border-radius:8px;padding:8px 12px;margin-bottom:12px;font:12px/1.5 ui-monospace,monospace;color:#5a4500">
     <b>DIAGNÓSTICO</b> — vista: <b>${vistaActual}</b> · esExtranet=<b>${ctx.esExtranet}</b> · modo=${ctx.modoForzado || "automático"}<br>
-    USER_TYPE (user.current)=<b>${d.userTypeCurrent}</b> · resuelto=<b>${d.userTypeResuelto}</b> · user.get=${d.userGet || "-"}<br>
+    USER_TYPE (user.current)=<b>${d.userTypeCurrent}</b> · resuelto=<b>${d.userTypeResuelto}</b> · departamento=${d.departamento || "-"}<br>
+    user.current error: <b>${d.userCurrentError || "-"}</b> · profile: ${d.profile || "-"}<br>
+    user.get: ${d.userGet || "-"} · getAuth: ${d.auth || "-"}<br>
     campos de user.current: ${d.keys || "-"}${d.error ? " · ERROR: " + d.error : ""}<br>
     <span style="color:#8a6d00">Forzar vista: agregá <code>?modo=cliente</code> o <code>?modo=dev</code> a la URL.</span>
   </div>`;
@@ -292,22 +333,41 @@ function renderDiag() {
 function render() {
   const app = document.getElementById("app");
   try { document.body.classList.toggle("cliente-mode", !!(ctx.esExtranet || sesion.modoCliente)); } catch (e) { /* noop */ }
+  try { document.body.classList.toggle("wizard-mode", vista === "form"); } catch (e) { /* noop */ }
 
-  // Candado de seguridad: el extranet NUNCA ve la vista de consultor (inicio/crear).
-  if (ctx.esExtranet && vista === "inicio") { vista = "cliente"; }
+  // Candado de seguridad: el extranet NUNCA ve las vistas de consultor (inicio/init).
+  if (ctx.esExtranet && (vista === "inicio" || vista === "init")) { vista = "cliente"; }
 
   if (vista === "inicio") {
     app.innerHTML = `${renderHeader()}${renderDiag()}${renderInicio()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
-    const cr = app.querySelector("[data-crear]");
-    if (cr) cr.addEventListener("click", () => {
-      const t = app.querySelector("[data-ne-texto]"); const md = app.querySelector("[data-crear-modo]");
-      const modo = (md && md.value) || "icine";
-      const tipo = modo === "form-t24" ? "t24" : "icine";
-      const conFormulario = modo === "form" || modo === "form-t24";
-      crear((t && t.value.trim()) || "Desarrollo", tipo, conFormulario);
+    const nv = app.querySelector("[data-nuevo]");
+    if (nv) nv.addEventListener("click", () => {
+      initDatos = { neTexto: "", cliente: "", url: "", modo: "icine" };
+      vista = "init"; render();
     });
     app.querySelectorAll("[data-continuar]").forEach((el) => el.addEventListener("click", () => continuar(el.getAttribute("data-continuar"))));
     app.querySelectorAll("[data-abrir-form]").forEach((el) => el.addEventListener("click", () => abrirFormulario(el.getAttribute("data-abrir-form"))));
+    return;
+  }
+
+  if (vista === "init") {
+    app.innerHTML = `${renderHeader()}${renderDiag()}${renderInit()}<div id="sesion-status" class="sb-status">${sesion.status}</div>${renderFooter()}`;
+    const sync = () => {
+      const g = (sel) => { const el = app.querySelector(sel); return el ? el.value : ""; };
+      initDatos.neTexto = g("[data-init-netexto]").trim();
+      initDatos.cliente = g("[data-init-cliente]").trim();
+      initDatos.url = g("[data-init-url]").trim();
+      const md = app.querySelector("[data-init-modo]"); initDatos.modo = (md && md.value) || "icine";
+    };
+    const cancel = app.querySelector("[data-init-cancelar]");
+    if (cancel) cancel.addEventListener("click", () => { vista = "inicio"; render(); });
+    const ok = app.querySelector("[data-init-crear]");
+    if (ok) ok.addEventListener("click", () => {
+      sync();
+      if (!initDatos.neTexto) { setStatus("Indicá un título para el desarrollo."); return; }
+      const conFormulario = initDatos.modo === "form";
+      crear(initDatos.neTexto, "icine", conFormulario, { cliente: initDatos.cliente, url: initDatos.url });
+    });
     return;
   }
 
@@ -391,11 +451,15 @@ function render() {
     : "";
 
   app.innerHTML = `${renderHeader()}${barra}
-    <div class="stepper">${renderStepper(currentStep, pasos)}</div>
-    <div class="card">${bannerBloqueo}${bodyHtml}</div>
-    <div class="nav-row">
-      <button class="nav-btn" data-nav="prev" ${currentStep === 0 ? "disabled" : ""}>Anterior</button>
-      ${currentStep >= pasos.length - 1 ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
+    <div class="wizard-layout">
+      ${renderTree(currentStep, pasos)}
+      <div class="wizard-main">
+        <div class="card">${bannerBloqueo}${bodyHtml}</div>
+        <div class="nav-row">
+          <button class="nav-btn" data-nav="prev" ${currentStep === 0 ? "disabled" : ""}>Anterior</button>
+          ${currentStep >= pasos.length - 1 ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
+        </div>
+      </div>
     </div>${renderFooter()}`;
 
   app.querySelector("[data-volver]").addEventListener("click", volverInicio);
