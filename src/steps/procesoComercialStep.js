@@ -60,7 +60,57 @@ export function renderProcesoComercialStep(state) {
     <div id="entity-form-container" class="entity-form-panel">${formHtml}</div>`;
 }
 
-function renderEntityForm(state, key) {
+// Fija qué entidad se configura (para el nodo del árbol de ese macroproceso).
+// Reinicia la sub-sección al cambiar de entidad.
+export function prepararEntidad(key) {
+  if (activeEntityTab !== key) { activeEntityTab = key; activeSection = null; }
+}
+
+// Nodo "Procesos comerciales" del árbol: explicación general del proceso,
+// capacitación, consideraciones y el selector de macroprocesos (qué entidades
+// se incluyen). Cada entidad elegida aparece como su propio nodo en el árbol.
+export function renderProcSel(state) {
+  const introHtml = `
+    <div class="field-block">
+      <label class="field-label">Explicación del proceso comercial completo <span style="color:#d00">*</span></label>
+      <p class="step-helper">Describe de inicio a fin cómo funciona el proceso comercial: qué entidades intervienen, cómo se conectan y cómo fluye una oportunidad hasta el cierre.</p>
+      <textarea data-proceso-intro rows="4" placeholder="Explica el proceso comercial completo…">${escapeHtml(state.procesoIntro || "")}</textarea>
+    </div>`;
+
+  const capList = (state.cip && Array.isArray(state.cip.proceso)) ? state.cip.proceso : [];
+  const capRows = capList.map((c, i) => `
+    <div class="row-flex">
+      <input type="text" data-pc-cap-idx="${i}" data-pc-cap-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación (ej. Uso del CRM comercial)">
+      <input type="text" data-pc-cap-idx="${i}" data-pc-cap-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 4 h)" style="max-width:150px">
+      <button class="icon-btn" data-pc-cap-remove="${i}"><i class="ti ti-x"></i></button>
+    </div>`).join("");
+  const capHtml = `
+    <div class="field-block">
+      <label class="field-label"><i class="ti ti-school"></i> Capacitación del proceso comercial <span style="color:#d00">*</span></label>
+      <p class="step-helper">Capacitaciones para todo el proceso comercial (no dependen de la entidad). Se suman a la tabla de tiempos del iCINE (CIP).</p>
+      ${capRows}
+      <button class="add-btn" data-pc-cap-add><i class="ti ti-plus" style="margin-right:4px"></i>Agregar capacitación</button>
+    </div>`;
+
+  const consVal = escapeHtml((state.consideraciones && state.consideraciones.proceso) || "");
+  const consHtml = `
+    <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
+      <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
+      <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
+      <textarea data-consideraciones="proceso" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${consVal}</textarea>
+    </div>`;
+
+  const selHelp = `
+    <div class="field-block">
+      <label class="field-label"><i class="ti ti-sitemap"></i> Macroprocesos comerciales</label>
+      <p class="step-helper">Elegí qué procesos incluye este desarrollo. Cada uno aparece en el árbol de la izquierda para configurarlo por separado.</p>
+    </div>`;
+  const mapHtml = renderEntityMap(state, null);
+
+  return `${introHtml}${capHtml}${selHelp}${mapHtml}${consHtml}`;
+}
+
+export function renderEntityForm(state, key) {
   const cfg = ENTIDADES[key];
   const data = state.entidades[key];
 

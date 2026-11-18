@@ -408,3 +408,11 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
   .wizard-tree{ position:static; flex:1 1 auto; width:100%; box-sizing:border-box; }
   .wz-area{ display:inline-block; vertical-align:top; }
 }
+
+/* Nodos hijos (macroprocesos) y placeholders del árbol */
+.wz-leaf.child{ margin-left:14px; font-size:13px; padding-top:7px; padding-bottom:7px; }
+.wz-leaf.child i{ font-size:15px; color:var(--ae-blue); }
+.wz-leaf.child.active i{ color:#fff; }
+.wz-leaf.wz-soon{ cursor:default; color:#9aa7b0; font-style:italic; }
+.wz-leaf.wz-soon:hover{ background:transparent; color:#9aa7b0; }
+.wz-leaf.wz-soon i{ font-size:15px; }

@@ -1,7 +1,6 @@
 import { defaultState, resetState, PIPELINE_NOMBRE_DEF } from "./state.js";
 import { ENTIDADES } from "./data/config.js";
-import { getPasos, renderStepper, attachStepperListeners } from "./components/stepper.js";
-import { renderTree } from "./components/tree.js";
+import { getArbol, renderArbol } from "./components/tree.js";
 import { renderHeader } from "./components/header.js";
 import { renderFooter } from "./components/footer.js";
 import { renderNEStep, attachNEListeners } from "./steps/neStep.js";
@@ -9,7 +8,7 @@ import { renderClienteEmpresa, attachClienteEmpresa } from "./steps/clienteEmpre
 import { renderClienteCaptacion, attachClienteCaptacion } from "./steps/clienteCaptacionStep.js";
 import { renderSeleccionStep, attachSeleccionListeners } from "./steps/seleccionStep.js";
 import { renderCaptacionStep, attachCaptacionListeners } from "./steps/captacionStep.js";
-import { renderProcesoComercialStep, attachProcesoComercialListeners } from "./steps/procesoComercialStep.js";
+import { renderProcesoComercialStep, attachProcesoComercialListeners, renderProcSel, renderEntityForm, prepararEntidad, renderRolesCRM } from "./steps/procesoComercialStep.js";
 import { renderReporteriaStep, attachReporteriaListeners } from "./steps/reporteriaStep.js";
 import { renderChatbotStep, attachChatbotListeners } from "./steps/chatbotStep.js";
 import { renderRRHHStep, attachRRHHListeners } from "./steps/rrhhStep.js";
@@ -21,7 +20,7 @@ import { listarDesarrollos, crearDesarrollo, cargarDesarrollo, guardarDesarrollo
 import { escapeHtml, escapeAttr } from "./utils.js";
 
 let state = normalizar(resetState());
-let currentStep = 0;
+let currentNodeKey = "ne";       // nodo activo del árbol (navegación por clave)
 let vista = "inicio";            // "inicio" | "init" | "form" | "cliente"
 let cargando = true;
 // Datos capturados en la pantalla de inicialización (antes de crear el registro).
@@ -155,7 +154,7 @@ async function crear(neTexto, tipo, conFormulario, base = {}) {
   aplicarMetaContexto();
   setStatus("Creando…");
   const r = await crearDesarrollo(datosComunes());
-  if (r && r.ok) { sesion.elementId = r.elementId; vista = "form"; currentStep = 0; setStatus("Creado #" + r.elementId); render(); }
+  if (r && r.ok) { sesion.elementId = r.elementId; vista = "form"; currentNodeKey = "ne"; setStatus("Creado #" + r.elementId); render(); }
   else setStatus("Error: " + ((r && r.mensaje) || "no se pudo crear"));
 }
 async function continuar(elementId) {
@@ -167,7 +166,7 @@ async function continuar(elementId) {
     aplicarMetaContexto();
     sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
     sesion.modoCliente = false; sesion.formStatus = r.formStatus || "";
-    vista = "form"; currentStep = 0; setStatus("Editando #" + r.elementId); render();
+    vista = "form"; currentNodeKey = "ne"; setStatus("Editando #" + r.elementId); render();
   } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
 }
 async function guardar() {
@@ -195,7 +194,7 @@ async function abrirFormulario(elementId) {
     state = normalizar(r.borrador || {});
     sesion.elementId = r.elementId; sesion.tipo = r.tipo || "icine"; sesion.neTexto = r.neTexto || "";
     sesion.modoCliente = true; sesion.formStatus = r.formStatus || "pendiente";
-    vista = "form"; currentStep = 0; setStatus(""); render();
+    vista = "form"; currentNodeKey = "ne"; setStatus(""); render();
   } else setStatus("Error: " + ((r && r.mensaje) || "no se pudo cargar"));
 }
 async function guardarBorradorCliente() {
@@ -380,14 +379,20 @@ function render() {
   // vista === "form"
   const modoCliente = !!sesion.modoCliente;
   const bloqueado = modoCliente && sesion.formStatus === "enviado";
-  const pasos = getPasos(state).filter((p) => !(modoCliente && p.key === "confirmacion"));
-  if (currentStep > pasos.length - 1) currentStep = pasos.length - 1;
-  const stepKey = pasos[currentStep].key;
+  const nodes = getArbol(state, { modoCliente });
+  if (!nodes.some((n) => n.key === currentNodeKey)) currentNodeKey = nodes[0].key;
+  const nodeIdx = nodes.findIndex((n) => n.key === currentNodeKey);
+  const node = nodes[nodeIdx];
+  const stepKey = node.key;
+  const entityKey = node.proc || null;   // para nodos de macroproceso (proc:<entidad>)
+
   let bodyHtml = "";
   if (stepKey === "ne") bodyHtml = modoCliente ? renderClienteEmpresa(state) : renderNEStep(state);
   else if (stepKey === "seleccion") bodyHtml = renderSeleccionStep(state, modoCliente);
+  else if (stepKey === "equipo") bodyHtml = renderRolesCRM(state);
   else if (stepKey === "captacion") bodyHtml = modoCliente ? renderClienteCaptacion(state) : renderCaptacionStep(state);
-  else if (stepKey === "proceso") bodyHtml = renderProcesoComercialStep(state);
+  else if (stepKey === "proc-sel") bodyHtml = renderProcSel(state);
+  else if (entityKey) { prepararEntidad(entityKey); bodyHtml = renderEntityForm(state, entityKey); }
   else if (stepKey === "reporteria") bodyHtml = renderReporteriaStep(state);
   else if (stepKey === "chatbot") bodyHtml = renderChatbotStep(state);
   else if (stepKey === "rrhh") bodyHtml = renderRRHHStep(state);
@@ -395,22 +400,21 @@ function render() {
   else if (stepKey === "app") bodyHtml = renderAppStep(state);
   else if (stepKey === "confirmacion") bodyHtml = renderConfirmacionStep(state, false);
 
-  // Campo "Consideraciones" + Capacitación: solo para el desarrollador, no en modo cliente.
-  const NE_CONS = { captacion: "captacion", proceso: "proceso", reporteria: "reporteria", chatbot: "chatbot", api: "api", app: "app", rrhh: "rrhh" };
+  // Campo "Consideraciones" + Capacitación (CIP) por NE: solo desarrollador.
+  // "proceso" se maneja dentro del nodo "Procesos comerciales" (renderProcSel);
+  // "captacion" captura lo suyo dentro del propio paso.
+  const NE_CONS = { reporteria: "reporteria", chatbot: "chatbot", api: "api", app: "app", rrhh: "rrhh" };
   if (!modoCliente && NE_CONS[stepKey]) {
     const ck = NE_CONS[stepKey];
     if (!state.cip) state.cip = {};
     if (!Array.isArray(state.cip[ck])) state.cip[ck] = [];
-    // En Proceso Comercial la capacitación se captura al inicio del paso (única, requerida),
-    // así que aquí no se vuelve a mostrar el bloque de CIP.
-    const cipFijo = stepKey === "proceso" || stepKey === "captacion"; // proceso y captación capturan la capacitación de forma propia
-    const cipRows = cipFijo ? "" : state.cip[ck].map((c, i) => `
+    const cipRows = state.cip[ck].map((c, i) => `
       <div class="row-flex">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="titulo" value="${escapeAttr(c.titulo || "")}" placeholder="Título de la capacitación">
         <input type="text" data-cip="${ck}" data-cip-idx="${i}" data-cip-prop="tiempo" value="${escapeAttr(c.tiempo || "")}" placeholder="Tiempo (ej. 2 h)" style="max-width:130px">
         <button class="icon-btn" data-cip-remove="${ck}|${i}"><i class="ti ti-x"></i></button>
       </div>`).join("");
-    if (!cipFijo) bodyHtml += `
+    bodyHtml += `
       <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
         <label class="field-label"><i class="ti ti-school"></i> Capacitación (CIP) <span style="color:#c00">*</span></label>
         <p class="step-helper" style="margin-top:2px">Capacitación de implementación personalizada para esta NE. Se agrega a la tabla de tiempos (Capacitación — CIP).</p>
@@ -419,16 +423,13 @@ function render() {
       </div>`;
 
     if (!state.consideraciones) state.consideraciones = {};
-    // Captación fija sus consideraciones dentro del propio paso.
-    if (stepKey !== "captacion") {
-      const val = escapeHtml(state.consideraciones[ck] || "");
-      bodyHtml += `
-        <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
-          <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
-          <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
-          <textarea data-consideraciones="${ck}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
-        </div>`;
-    }
+    const val = escapeHtml(state.consideraciones[ck] || "");
+    bodyHtml += `
+      <div class="field-block" style="border-top:1px solid #eee;margin-top:16px;padding-top:14px">
+        <label class="field-label"><i class="ti ti-note"></i> Consideraciones</label>
+        <p class="step-helper" style="margin-top:2px">Texto libre que se agregará al final de esta NE en el iCINE.</p>
+        <textarea data-consideraciones="${ck}" rows="3" placeholder="Aclaraciones, supuestos, dependencias…">${val}</textarea>
+      </div>`;
   }
 
   // En modo desarrollador, si el registro tiene formulario, ofrecemos abrirlo directo.
@@ -452,12 +453,12 @@ function render() {
 
   app.innerHTML = `${renderHeader()}${barra}
     <div class="wizard-layout">
-      ${renderTree(currentStep, pasos)}
+      ${renderArbol(currentNodeKey, nodes)}
       <div class="wizard-main">
         <div class="card">${bannerBloqueo}${bodyHtml}</div>
         <div class="nav-row">
-          <button class="nav-btn" data-nav="prev" ${currentStep === 0 ? "disabled" : ""}>Anterior</button>
-          ${currentStep >= pasos.length - 1 ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
+          <button class="nav-btn" data-nav="prev" ${nodeIdx === 0 ? "disabled" : ""}>Anterior</button>
+          ${nodeIdx >= nodes.length - 1 ? "" : '<button class="nav-btn primary" data-nav="next">Siguiente<i class="ti ti-arrow-right" style="margin-left:6px"></i></button>'}
         </div>
       </div>
     </div>${renderFooter()}`;
@@ -467,9 +468,10 @@ function render() {
   const vfBtn = app.querySelector("[data-ver-form]"); if (vfBtn) vfBtn.addEventListener("click", () => { if (sesion.elementId) abrirFormulario(sesion.elementId); });
   const cbBtn = app.querySelector("[data-cli-borrador]"); if (cbBtn) cbBtn.addEventListener("click", guardarBorradorCliente);
   const ceBtn = app.querySelector("[data-cli-enviar]"); if (ceBtn) ceBtn.addEventListener("click", enviarCliente);
-  attachStepperListeners(app, (i) => { currentStep = i; render(); });
-  const prev = app.querySelector('[data-nav="prev"]'); if (prev) prev.addEventListener("click", () => { currentStep = Math.max(0, currentStep - 1); render(); });
-  const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { currentStep = Math.min(pasos.length - 1, currentStep + 1); render(); });
+  // Navegación por árbol (por clave)
+  app.querySelectorAll("[data-goto-key]").forEach((el) => el.addEventListener("click", () => { currentNodeKey = el.getAttribute("data-goto-key"); render(); }));
+  const prev = app.querySelector('[data-nav="prev"]'); if (prev) prev.addEventListener("click", () => { if (nodeIdx > 0) { currentNodeKey = nodes[nodeIdx - 1].key; render(); } });
+  const next = app.querySelector('[data-nav="next"]'); if (next) next.addEventListener("click", () => { if (nodeIdx < nodes.length - 1) { currentNodeKey = nodes[nodeIdx + 1].key; render(); } });
 
   // Modo cliente bloqueado: deshabilitar toda entrada del formulario (menos la navegación).
   if (bloqueado) {
@@ -502,6 +504,7 @@ function render() {
   const card = app.querySelector(".card");
   if (stepKey === "ne") { if (modoCliente) attachClienteEmpresa(card, state, onChange); else attachNEListeners(card, state, onChange); }
   else if (stepKey === "seleccion") attachSeleccionListeners(card, state, onChange);
+  else if (stepKey === "equipo" || stepKey === "proc-sel" || entityKey) attachProcesoComercialListeners(card, state, onChange);
   else if (stepKey === "captacion") { if (modoCliente) attachClienteCaptacion(card, state, onChange); else attachCaptacionListeners(card, state, onChange); }
   else if (stepKey === "proceso") attachProcesoComercialListeners(card, state, onChange);
   else if (stepKey === "reporteria") attachReporteriaListeners(card, state, onChange);
