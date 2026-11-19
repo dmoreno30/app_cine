@@ -6,8 +6,38 @@ import { submitCaptura } from "../submit.js";
 let lastSendStatus = null;
 let sending = false;
 let lastDocxUrl = null;
+let lastDocxNombre = "iCINE";
 
 const ESTADOS = ["EN CREACIÓN", "POR PRESENTAR", "FINALIZADO"];
+
+// Nombre de descarga legible: iCINE_[Cliente]_borrador.docx
+function nombreDescarga(state) {
+  const c = (state.cliente || "cliente").replace(/[^\w\sáéíóúñÁÉÍÓÚÑ-]/g, "").trim().replace(/\s+/g, "_") || "cliente";
+  return `iCINE_${c}_borrador`;
+}
+
+// Descarga robusta: trae el .docx como blob y lo guarda, sin abrir pestañas
+// nuevas (que algunos navegadores cierran sin completar la descarga). Si el
+// fetch falla por CORS u otro motivo, cae a navegar a la URL en la misma pestaña.
+async function descargarDocx(url, nombre) {
+  if (!url) return false;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const blob = await r.blob();
+    const obj = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = obj;
+    a.download = (nombre || "iCINE") + ".docx";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(obj); a.remove(); }, 1500);
+    return true;
+  } catch (e) {
+    try { window.location.href = url; } catch (_) { /* noop */ }
+    return false;
+  }
+}
 
 // Normaliza state.pruebas a listas { titulo, tiempo } (compat con el formato viejo de texto).
 function ensurePruebas(state) {
@@ -138,7 +168,7 @@ export function renderConfirmacionStep(state, devMode) {
     </button>`;
 
   if (lastSendStatus) html += `<p class="send-status ${lastSendStatus.ok ? "ok" : "error"}">${escapeHtml(lastSendStatus.message)}</p>`;
-  if (lastDocxUrl) html += `<p class="send-status ok" style="margin-top:8px"><a href="${lastDocxUrl}" target="_blank" rel="noopener" style="color:inherit;font-weight:600"><i class="ti ti-file-download" style="margin-right:6px"></i>Descargar el iCINE generado</a></p>`;
+  if (lastDocxUrl) html += `<p style="margin-top:8px"><button class="nav-btn" data-descargar><i class="ti ti-file-download" style="margin-right:6px"></i>Descargar el iCINE de nuevo</button></p>`;
 
   if (devMode) {
     const json = JSON.stringify(buildCanonicalJSON(state), null, 2);
@@ -182,9 +212,16 @@ export function attachConfirmacionListeners(container, state, onChange, inviteTo
     const result = await submitCaptura({ ...json, _token: inviteToken });
     sending = false;
     lastDocxUrl = result.ok ? result.docxUrl : null;
+    lastDocxNombre = nombreDescarga(state);
     lastSendStatus = result.ok
-      ? { ok: true, message: "iCINE generado correctamente." }
+      ? { ok: true, message: "iCINE generado. Descargando el documento…" }
       : { ok: false, message: result.mensaje || "No se pudo generar. Revisá la conexión." };
     onChange({ rerender: true });
+    // Descarga directa inmediata (sin abrir pestañas nuevas).
+    if (result.ok && lastDocxUrl) descargarDocx(lastDocxUrl, lastDocxNombre);
   });
+
+  // Botón para volver a descargar el documento ya generado.
+  const descBtn = container.querySelector("[data-descargar]");
+  if (descBtn) descBtn.addEventListener("click", (e) => { e.preventDefault(); descargarDocx(lastDocxUrl, lastDocxNombre); });
 }
