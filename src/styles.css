@@ -384,7 +384,10 @@ pre.json-preview{background:#1e1e1c;color:#e8e6df;padding:16px;border-radius:8px
 /* ---------------- NAVEGACIÓN POR ÁRBOL (wizard) ---------------- */
 .wizard-mode #app{ max-width:1120px; }
 .wizard-layout{ display:flex; gap:22px; align-items:flex-start; }
-.wizard-tree{ flex:0 0 250px; position:sticky; top:16px; align-self:flex-start; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 10px; }
+.wizard-tree{ flex:0 0 250px; position:sticky; top:16px; align-self:flex-start; max-height:calc(100vh - 32px); overflow-y:auto; overscroll-behavior:contain; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:12px 10px; }
+.wizard-tree::-webkit-scrollbar{ width:8px; }
+.wizard-tree::-webkit-scrollbar-thumb{ background:#cfd8dd; border-radius:8px; }
+.wizard-tree::-webkit-scrollbar-track{ background:transparent; }
 .wizard-main{ flex:1; min-width:0; }
 .wz-area{ margin-bottom:8px; }
 .wz-area + .wz-area{ border-top:1px solid var(--border); padding-top:8px; }

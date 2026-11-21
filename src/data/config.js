@@ -120,7 +120,9 @@ export const DIRECCIONES_API = [
 // Cada paso crea o actualiza un registro.
 export const API_ACCIONES = [
   { key: "crear",      label: "Crear" },
-  { key: "actualizar", label: "Actualizar" }
+  { key: "actualizar", label: "Actualizar" },
+  { key: "eliminar",   label: "Eliminar" },
+  { key: "listar",     label: "Listar" }
 ];
 export const API_METODOS = ["GET", "POST", "PUT", "DELETE"];
 // Cómo se autentica contra el software externo.
