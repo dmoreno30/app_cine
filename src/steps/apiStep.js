@@ -13,13 +13,16 @@ function sel(lista, val, usaKey) {
   }).join("");
 }
 
-function pasoCard(p, i) {
+function pasoCard(p, i, total) {
   return `
     <div class="rep-card">
       <div class="rep-head" style="align-items:center">
         <span class="paso-num">${i + 1}</span>
         <select data-api-p="${i}" data-api-pprop="accion" style="max-width:130px"><option value="">Acción…</option>${sel(API_ACCIONES, p.accion, true)}</select>
         <select data-api-p="${i}" data-api-pprop="objeto" style="max-width:170px"><option value="">Objeto…</option>${sel(OBJETOS_API, p.objeto, false)}</select>
+        <span style="flex:1"></span>
+        <button class="icon-btn" data-api-pup="${i}" title="Subir paso" ${i === 0 ? "disabled" : ""}><i class="ti ti-arrow-up"></i></button>
+        <button class="icon-btn" data-api-pdown="${i}" title="Bajar paso" ${i === total - 1 ? "disabled" : ""}><i class="ti ti-arrow-down"></i></button>
         <button class="icon-btn" data-api-premove="${i}" title="Quitar paso"><i class="ti ti-trash"></i></button>
       </div>
       <div class="rep-field">
@@ -52,7 +55,7 @@ export function renderAPIStep(state) {
   const a = state.api;
   if (!Array.isArray(a.pasos)) a.pasos = [];
 
-  const pasos = a.pasos.map((p, i) => pasoCard(p, i)).join("")
+  const pasos = a.pasos.map((p, i) => pasoCard(p, i, a.pasos.length)).join("")
     || '<p style="font-size:13px;color:#888;margin:4px 0">Todavía no agregaste pasos de sincronización.</p>';
 
   const autOtro = a.autenticacion === "Otro / a definir";
@@ -143,6 +146,9 @@ export function attachAPIListeners(container, state, onChange) {
   const add = container.querySelector("[data-api-padd]");
   if (add) add.addEventListener("click", () => { a.pasos.push({ objeto: "", accion: "crear", direccion: "", descripcion: "", endpoint: "", metodo: "", tiempo: "", mapeaId: false, consideraciones: "" }); onChange({ rerender: true }); });
   container.querySelectorAll("[data-api-premove]").forEach((el) => el.addEventListener("click", () => { a.pasos.splice(parseInt(el.getAttribute("data-api-premove"), 10), 1); onChange({ rerender: true }); }));
+  const mover = (i, j) => { if (j < 0 || j >= a.pasos.length) return; const t = a.pasos[i]; a.pasos[i] = a.pasos[j]; a.pasos[j] = t; onChange({ rerender: true }); };
+  container.querySelectorAll("[data-api-pup]").forEach((el) => el.addEventListener("click", () => { const i = parseInt(el.getAttribute("data-api-pup"), 10); mover(i, i - 1); }));
+  container.querySelectorAll("[data-api-pdown]").forEach((el) => el.addEventListener("click", () => { const i = parseInt(el.getAttribute("data-api-pdown"), 10); mover(i, i + 1); }));
   container.querySelectorAll("[data-api-pprop]").forEach((el) => {
     const prop = el.getAttribute("data-api-pprop");
     const evt = (el.type === "checkbox") ? "change" : (el.tagName === "SELECT" ? "change" : "input");
